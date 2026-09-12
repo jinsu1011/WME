@@ -3,7 +3,7 @@ import type { Enrollment, RubricLevel, StepId, User } from '@/types'
 /** 데모 사용자. 실제 직원 정보가 아니며 인증 구현도 아니다. */
 export const instructor: User = {
   id: 'u-instructor',
-  displayName: '최민정',
+  displayName: '최태원',
   role: 'instructor',
   department: '기술교육센터 · 교육 담당',
 }
@@ -29,7 +29,7 @@ const ALL_STEPS: StepId[] = ['concept', 'marks', 'align', 'submit', 'feedback']
 export const learnerSeeds: LearnerSeed[] = [
   {
     id: 'u-1',
-    displayName: '박지훈',
+    displayName: '김진수',
     department: '장비기술1팀 · 신입',
     steps: ALL_STEPS.slice(0, 4),
     basicsDone: true,

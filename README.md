@@ -1,4 +1,4 @@
-# WME
+# WME — We Make Experts
 
 > **장비를 운용하는 기업을 위한 B2B 사내 기술교육 플랫폼**
 > SKALA AI 웹서비스 미니 프로젝트 (3일, 개인)

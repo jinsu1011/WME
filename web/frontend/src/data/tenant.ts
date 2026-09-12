@@ -37,10 +37,13 @@ export const tenant: TenantConfig = {
     '미니 프로젝트 데모 환경입니다. 고객사와 학습자 기록은 시연용 가상 데이터입니다.',
 }
 
-/** 제품(플랫폼) 정보 — 고객사가 바뀌어도 그대로다. 서비스명은 아직 가칭. */
+/** 제품(플랫폼) 정보 — 고객사가 바뀌어도 그대로다. */
 export const product = {
-  name: 'SEMI:ON',
-  nameIsProvisional: true,
+  name: 'WME',
+  fullName: 'We Make Experts',
+  /** 서비스명이 확정되어 '가칭' 배지를 내렸다. */
+  nameIsProvisional: false,
+  initials: 'W',
   tagline: '기술을 배우고, 실습으로 확인한다',
   category: '장비 운용 기업을 위한 사내 기술교육 플랫폼',
 } as const

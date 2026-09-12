@@ -19,7 +19,7 @@ interface DemoState {
 }
 
 const DemoContext = createContext<DemoState | null>(null)
-const STORAGE_KEY = 'semion.demo.session'
+const STORAGE_KEY = 'wme.demo.session'
 
 function readSaved(): Role | null {
   const saved = localStorage.getItem(STORAGE_KEY)

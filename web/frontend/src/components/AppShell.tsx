@@ -45,7 +45,7 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <span className="grid size-8 place-items-center rounded-lg bg-brand-600 text-[13px] font-bold text-white">
-        S
+        {product.initials}
       </span>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">

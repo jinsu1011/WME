@@ -31,7 +31,7 @@ export function Login() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <span className="mx-auto mb-3 grid size-11 place-items-center rounded-xl bg-brand-600 text-base font-bold text-white">
-            S
+            {product.initials}
           </span>
           <div className="flex items-center justify-center gap-1.5">
             <h1 className="text-xl font-bold tracking-tight text-slate-900">{product.name}</h1>
@@ -41,7 +41,10 @@ export function Login() {
               </span>
             )}
           </div>
-          <p className="mt-1.5 text-[13px] text-slate-500">
+          <p className="mt-1 text-[12px] font-medium tracking-wide text-slate-400">
+            {product.fullName}
+          </p>
+          <p className="mt-2 text-[13px] text-slate-500">
             {tenant.companyName} · {tenant.programTitle}
           </p>
         </div>

@@ -12,10 +12,10 @@
 
 | 세션 | 담당 | 쓰기 가능 | 읽기만 |
 |---|---|---|---|
-| **HEADER** | 기획·문서·의사결정·발표 | `PROJECT_HEAD.md`, `기획/`, `제출/` | 전부 |
-| **FRONT** | 화면 | `web/frontend/` | `기획/설계/` |
-| **BACK** | API·DB·LLM 연결 | `web/backend/`, `data/local/` | `web/frontend/src/types`, `src/api` |
-| **SENSOR** | 펌웨어·데이터 수집·이상 탐지 모델 | `hardware/`, `data/` (local 제외) | 전부 |
+| **Header** | 조율·결정·검증 + 설계서·기술서·발표자료 | `PROJECT_HEAD.md`, `기획/`, `제출/` | 전부 |
+| **Front** | 화면 | `web/frontend/` | `기획/설계/` |
+| **Back** | API·DB·LLM 연결 | `web/backend/`, `data/local/` | `web/frontend/src/types`, `src/api` |
+| **Sensor** | 펌웨어·데이터 수집·이상 탐지 모델 | `hardware/`, `data/` (local 제외) | 전부 |
 
 **LLM 교육 피드백은 BACK 담당이다.** API 키를 들고 호출하는 쪽이 서버이기 때문에,
 LLM을 따로 떼면 같은 FastAPI 파일을 두 세션이 건드리게 된다.
@@ -55,7 +55,7 @@ HEADER (기획·문서)  ─── 계속 열어두기
 
 | 파일 | 용도 |
 |---|---|
-| `HEADER.md` | 기획·문서·발표 |
+| `HEADER.md` | 조율·결정·문서·발표 |
 | `FRONT.md` | 화면 작업 |
 | `BACK.md` | API·DB·LLM |
 | `SENSOR.md` | 펌웨어·데이터·이상 탐지 |

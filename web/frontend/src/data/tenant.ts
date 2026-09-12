@@ -12,6 +12,8 @@ export interface TenantConfig {
   terms: {
     asset: string
     assetShort: string
+    mask: string
+    aligner: string
     mockup: string
     trainingCenter: string
     technician: string
@@ -23,12 +25,14 @@ export const tenant: TenantConfig = {
   id: 'demo-hynix',
   companyName: 'SK 하이닉수',
   companyShortName: '하이닉수',
-  industryLabel: '반도체 장비',
+  industryLabel: '반도체 포토공정',
   logoInitials: 'SK',
   programTitle: '장비기술 사내교육',
   terms: {
-    asset: '웨이퍼 스테이지',
-    assetShort: '스테이지',
+    asset: '웨이퍼',
+    assetShort: '웨이퍼',
+    mask: '마스크',
+    aligner: '수동 마스크 얼라이너',
     mockup: '웨이퍼 모형',
     trainingCenter: '기술교육센터',
     technician: '신입·전환배치 기술자',

@@ -1,4 +1,5 @@
 import { allLearnerStats, fetchCourse, listAttempts, statsFor } from '@/api'
+import { IMPLEMENTED_COURSE_ID } from '@/data/courses'
 import { AchievementPanels } from '@/components/Achievement'
 import { ActivityBars, MinutesTrend } from '@/charts/Charts'
 import { Card, CardHeader, DemoDataNote, EmptyState, PageHeader, StatTile } from '@/components/ui'
@@ -20,7 +21,7 @@ export function Status() {
   const { currentUser } = useDemo()
   const stats = statsFor(currentUser.id)!
   const attempts = listAttempts(currentUser.id)
-  const course = fetchCourse('stage-anomaly')!
+  const course = fetchCourse(IMPLEMENTED_COURSE_ID)!
   const cohort = cohortRubricPct(allLearnerStats())
   const activity = weeklyActivity(attempts)
   const minutes = practiceTimeTrend(attempts)

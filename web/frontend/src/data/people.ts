@@ -12,15 +12,15 @@ export interface LearnerSeed {
   id: string
   displayName: string
   department: string
-  /** stage-anomaly 과정에서 완료한 단계 */
+  /** photo-align 과정에서 완료한 단계 */
   steps: StepId[]
   /** 과거 실습 시도. 최신이 배열 끝. */
   attempts: { daysAgo: number; durationSec: number; rubric: RubricLevel[] | null }[]
-  /** equipment-basics(미리보기 과정) 열람 완료 여부 */
+  /** photo-basics(미리보기 과정) 열람 완료 여부 */
   basicsDone: boolean
 }
 
-const ALL_STEPS: StepId[] = ['concept', 'baseline', 'practice', 'judgement', 'feedback']
+const ALL_STEPS: StepId[] = ['concept', 'marks', 'align', 'submit', 'feedback']
 
 /**
  * 시연용 시드 기록. 화면의 모든 집계는 이 기록에서만 계산한다.
@@ -123,7 +123,7 @@ export const seedEnrollments: Enrollment[] = learnerSeeds.flatMap((s): Enrollmen
   {
     id: `e-${s.id}-stage`,
     userId: s.id,
-    courseId: 'stage-anomaly',
+    courseId: 'photo-align',
     status: s.steps.length === 5 ? 'completed' : s.steps.length === 0 ? 'not_started' : 'in_progress',
     stepsCompleted: s.steps,
     completedAt: null,
@@ -131,7 +131,7 @@ export const seedEnrollments: Enrollment[] = learnerSeeds.flatMap((s): Enrollmen
   {
     id: `e-${s.id}-basics`,
     userId: s.id,
-    courseId: 'equipment-basics',
+    courseId: 'photo-basics',
     status: s.basicsDone ? 'completed' : 'not_started',
     stepsCompleted: [],
     completedAt: null,

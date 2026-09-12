@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Availability, DataSource } from '@/types'
+import type { Availability, DataSource, InputSource } from '@/types'
 
 const TONES = {
   ok: 'bg-ok-50 text-ok-500 ring-ok-500/20',
@@ -47,6 +47,22 @@ const SOURCE_META: Record<DataSource, { label: string; tone: Tone }> = {
 
 export function DataSourceBadge({ value }: { value: DataSource }) {
   const meta = SOURCE_META[value]
+  return (
+    <Badge tone={meta.tone}>
+      <span className="size-1.5 rounded-full bg-current" />
+      {meta.label}
+    </Badge>
+  )
+}
+
+/** 무엇으로 조작했는지. 합성·예시 기록과 구분해 항상 표시한다. */
+const INPUT_META: Record<InputSource, { label: string; tone: Tone }> = {
+  keyboard: { label: '키보드 조작', tone: 'brand' },
+  controller: { label: '모형 컨트롤러', tone: 'ok' },
+}
+
+export function InputSourceBadge({ value }: { value: InputSource }) {
+  const meta = INPUT_META[value]
   return (
     <Badge tone={meta.tone}>
       <span className="size-1.5 rounded-full bg-current" />

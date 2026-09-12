@@ -162,3 +162,55 @@ export function MinutesTrend({ data }: { data: { label: string; minutes: number 
     </ResponsiveContainer>
   )
 }
+
+/** 시간에 따른 남은 위치 오차(px). 허용 범위를 기준선으로 함께 그린다. */
+export function ErrorTrend({
+  data,
+  tolerancePx,
+}: {
+  data: { sec: number; errorPx: number }[]
+  tolerancePx: number
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={190}>
+      <LineChart data={data} margin={{ top: 16, right: 16, bottom: 0, left: -20 }}>
+        <CartesianGrid vertical={false} stroke={viz.grid} />
+        <XAxis
+          dataKey="sec"
+          type="number"
+          domain={[0, 'dataMax']}
+          tickCount={5}
+          tickFormatter={(v) => `${Math.round(Number(v))}초`}
+          tick={axisTick}
+          tickLine={false}
+          axisLine={{ stroke: viz.axis }}
+        />
+        <YAxis tick={axisTick} tickLine={false} axisLine={false} unit="px" />
+        <Tooltip
+          {...tooltipStyle}
+          formatter={(v) => [`${Number(v).toFixed(1)}px`, '남은 위치 오차']}
+          labelFormatter={(l) => `${Number(l).toFixed(1)}초`}
+        />
+        <ReferenceLine
+          y={tolerancePx}
+          stroke={viz.good}
+          strokeDasharray="4 4"
+          label={{
+            value: `허용 범위 ${tolerancePx}px`,
+            position: 'insideTopRight',
+            fontSize: 11,
+            fill: '#5b7d5b',
+          }}
+        />
+        <Line
+          type="monotone"
+          dataKey="errorPx"
+          stroke={viz.series1}
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 5 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}

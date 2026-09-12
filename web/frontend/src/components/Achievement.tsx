@@ -44,8 +44,8 @@ export function AchievementPanels({
               cohort={cohort}
             />
             <DemoDataNote>
-              달성도는 제출 답변 {stats.submittedCount}건의 평균입니다. 센서 이상도 점수가 아니라
-              관찰·판단 기준에 대한 자동 체크와 강사 검토 결과입니다.
+              달성도는 제출 답변 {stats.submittedCount}건의 평균입니다. 손재주 점수가 아니라
+              과정에 등록된 {course.rubric.length}개 기준에 대한 확인 결과입니다.
             </DemoDataNote>
           </>
         ) : (

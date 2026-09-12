@@ -1,5 +1,7 @@
 // 계획서 10절(DB 6테이블)과 1:1로 맞춘 타입.
 // BE(FastAPI/SQLite)를 붙일 때 이 형태를 그대로 API 응답 스키마로 쓴다.
+// 실습 과정 정의는 기획/설계/실습과정_정렬.md 가 기준이다.
+// snake_case 인 DB 컬럼명과의 대응은 각 주석에 적는다.
 
 export type Role = 'learner' | 'instructor'
 
@@ -14,7 +16,8 @@ export interface User {
 /** 과정 공개 상태 — 카탈로그 배지와 실습 생성 가능 여부를 함께 결정한다. */
 export type Availability = 'available' | 'preview' | 'coming_soon'
 
-export type StepId = 'concept' | 'baseline' | 'practice' | 'judgement' | 'feedback'
+/** 정렬 실습의 5단계 (실습과정_정렬.md 5절). */
+export type StepId = 'concept' | 'marks' | 'align' | 'submit' | 'feedback'
 
 export interface CourseStep {
   id: StepId
@@ -22,8 +25,8 @@ export interface CourseStep {
   summary: string
 }
 
-/** 교육생이 고를 수 있는 점검 항목. 시연용 교육 항목이며 실제 기업 점검 절차가 아니다. */
-export interface CheckItem {
+/** 답변 폼의 선택지 한 개. 과정 내용이므로 문구는 전부 src/data 에만 둔다. */
+export interface ChoiceOption {
   id: string
   label: string
   hint: string
@@ -33,6 +36,37 @@ export interface CheckItem {
 export interface RubricCriterion {
   short: string
   text: string
+}
+
+/** 조작 안내 한 줄. "방향키 = 위치" 같은 문구를 컴포넌트에 직접 쓰지 않기 위해 데이터로 둔다. */
+export interface ControlHint {
+  keys: string
+  effect: string
+}
+
+/**
+ * 정렬 실습의 과정 설정값. DB 의 courses.content_json 에 들어간다.
+ * 허용 오차는 **교육 과정 설정값이며 실제 장비의 정렬 정밀도가 아니다.**
+ */
+export interface AlignmentSettings {
+  /** 허용 위치 오차 (화면 px) */
+  tolerancePx: number
+  /** 허용 회전 오차 (도) */
+  toleranceDeg: number
+  /** 화면 px 을 교육용으로 환산해 보여줄 때 쓰는 값. 장비 실측 환산이 아니다. */
+  umPerPx: number
+  /** 실습 시작 시 웨이퍼 마크가 어긋나 있는 초기 위치 */
+  startOffset: { x: number; y: number; theta: number }
+  /** 조작 안내 문구 */
+  controls: ControlHint[]
+  /** 교육용 컨트롤러임을 밝히는 문구. 화면에 항상 표시한다. */
+  controllerNotice: string
+  /** 정렬 마크 이름. 업종 문구이므로 컴포넌트에 직접 쓰지 않는다. */
+  markLabels: { fixed: string; moving: string }
+  /** 화면 시야(반지름, px). 움직이는 마크가 이 밖으로 나가지 않게 막는다. */
+  fieldRadius: number
+  /** 실습 준비물. 문구를 컴포넌트에 쓰지 않기 위해 데이터로 둔다. */
+  materials: string[]
 }
 
 export interface Course {
@@ -45,9 +79,12 @@ export interface Course {
   objectives: string[]
   prerequisites: string[]
   steps: CourseStep[]
-  checkItems: CheckItem[]
+  /** 제출 폼에서 고르는 조정 순서 선택지 */
+  orderOptions: ChoiceOption[]
   /** 피드백 기준(루브릭). AI 피드백 입력으로 그대로 전달하고, 성취도 그래프의 축이 된다. */
   rubric: RubricCriterion[]
+  /** 정렬 실습 과정만 가진다. 소개·준비 중 과정은 없다. */
+  alignment: AlignmentSettings | null
   version: string
 }
 
@@ -62,58 +99,64 @@ export interface Enrollment {
   completedAt: string | null
 }
 
-/** 측정 데이터의 출처. 화면에 항상 표시하며 절대 섞어 쓰지 않는다. */
+/** 기록의 출처. 시연용 예시 기록과 실제 조작 기록을 섞어 보여주지 않는다. */
 export type DataSource = 'mock' | 'replay' | 'live'
 
-export type AttemptStatus =
-  | 'measuring'
-  | 'measured'
-  | 'submitted'
-  | 'feedback_ready'
-  | 'feedback_failed'
+/**
+ * 무엇으로 웨이퍼 마크를 움직였는지. 화면에 항상 표시한다.
+ * keyboard = 키보드 조작, controller = 센서를 붙인 교육용 모형 컨트롤러.
+ */
+export type InputSource = 'keyboard' | 'controller'
 
-/** 관측 단계 전환. 첫 버전은 자동 인식 없이 웹 버튼으로만 표시한다. */
-export type PhaseName = 'idle' | 'moving' | 'settling' | 'ended'
+export type AttemptStatus = 'aligning' | 'aligned' | 'submitted' | 'feedback_ready' | 'feedback_failed'
+
+/** 실습 진행 상태 전환. 자동 인식 없이 화면 버튼으로만 기록한다. */
+export type PhaseName = 'idle' | 'aligning' | 'confirmed' | 'submitted'
 
 export interface PhaseMarker {
   phase: PhaseName
   tMs: number
 }
 
-/** 한 시점의 측정값. roll/pitch/anomalyScore는 서버 계산 결과 자리. */
+/**
+ * 한 시점의 기록. DB measurements 테이블 한 행.
+ * roll/pitch 는 컨트롤러 입력(키보드일 때는 0), wafer* 는 화면 속 웨이퍼 마크 상태다.
+ */
 export interface Sample {
   tMs: number
-  ax: number
-  ay: number
-  az: number
-  gx: number
-  gy: number
-  gz: number
   roll: number
   pitch: number
-  gyroMag: number
-  anomalyScore: number | null
-  quality: 'ok' | 'gap'
+  waferX: number
+  waferY: number
+  waferTheta: number
+  /** 마스크 마크 기준 남은 오차 */
+  dx: number
+  dy: number
+  dTheta: number
 }
 
-/** 근거로 선택할 수 있는 이상 후보 구간. */
-export interface EvidenceEvent {
+/** 보정 구간. 규칙 기반으로 계산하며 학습자가 고르는 값이 아니다. */
+export interface AlignmentEvent {
   id: string
   attemptId: string
   startMs: number
   endMs: number
-  type: 'anomaly_candidate' | 'manual'
+  /** adjustment = 보정 구간, overshoot = 목표를 지나쳤다 되돌아온 구간, manual = 학습자 표시 */
+  type: 'adjustment' | 'overshoot' | 'manual'
+  /** 어떤 축을 움직인 구간인지 */
+  axis: 'xy' | 'theta'
   metrics: {
-    meanScore: number
-    peakGyroMag: number
-    tiltDeltaDeg: number
+    /** 구간 시작 시점의 남은 오차 (px 또는 도) */
+    errorBefore: number
+    /** 구간 끝 시점의 남은 오차 */
+    errorAfter: number
   }
 }
 
 export interface Answer {
-  /** 선택한 근거 구간 ID. 반드시 같은 attempt의 event여야 한다. */
-  evidenceIds: string[]
-  checkItemId: string
+  /** course.orderOptions 의 id. 어떤 순서로 조정했는지 */
+  orderOptionId: string
+  /** 왜 그 순서로 했는지 (루브릭 4번 '설명·기록'의 근거) */
   reason: string
   submittedAt: string
 }
@@ -123,22 +166,33 @@ export interface Feedback {
   generatedBy: 'mock' | 'llm'
   good: string[]
   improve: string[]
-  /** 참조한 근거 구간 ID. 서버에서 유효성을 검증한 것만 남긴다. */
-  evidenceIds: string[]
+  /** 참조한 보정 구간 ID. 서버에서 유효성을 검증한 것만 남긴다. */
+  eventIds: string[]
   nextStep: string
   cannotJudge: string[]
   generatedAt: string
 }
 
-export interface ObservationSummary {
+/**
+ * 정렬 결과 요약 (실습과정_정렬.md 6절). DB attempts.summary_json.
+ * finalDx=final_dx, finalDy=final_dy, finalDTheta=final_dtheta,
+ * durationMs=duration_ms, adjustmentCount=adjustment_count,
+ * overshootCount=overshoot_count, converged=converged
+ */
+export interface AlignmentSummary {
+  /** 최종 위치 오차 (화면 px) */
+  finalDx: number
+  finalDy: number
+  /** 최종 회전 오차 (도) */
+  finalDTheta: number
   durationMs: number
-  settlingDurationMs: number
-  maxTiltDeltaDeg: number
-  peakGyroMag: number
-  anomalyWindowCount: number
+  adjustmentCount: number
+  overshootCount: number
+  /** 과정 설정값인 허용 오차 안에 들어왔는지 */
+  converged: boolean
 }
 
-/** 루브릭 항목별 달성 정도. 0=미충족, 1=부분, 2=충족. 자동 체크 + 강사 검토 결과다. */
+/** 루브릭 항목별 달성 정도. 0=미충족, 1=부분, 2=충족. */
 export type RubricLevel = 0 | 1 | 2
 
 export interface Attempt {
@@ -147,14 +201,17 @@ export interface Attempt {
   userId: string
   courseId: string
   attemptNo: number
+  /** 시연용 예시 기록인지 실제 조작 기록인지 */
   source: DataSource
+  /** 무엇으로 조작했는지 */
+  inputSource: InputSource
   status: AttemptStatus
   startedAt: string
   endedAt: string | null
   phaseMarkers: PhaseMarker[]
   samples: Sample[]
-  events: EvidenceEvent[]
-  summary: ObservationSummary | null
+  events: AlignmentEvent[]
+  summary: AlignmentSummary | null
   answer: Answer | null
   feedback: Feedback | null
   feedbackViewedAt: string | null

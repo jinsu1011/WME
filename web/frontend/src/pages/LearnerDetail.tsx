@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
+import { IMPLEMENTED_COURSE_ID } from '@/data/courses'
 import {
   allLearnerStats,
   fetchCourse,
@@ -23,7 +24,7 @@ export function LearnerDetail() {
     return <EmptyState title="존재하지 않는 학습자입니다" description="학습자 목록에서 다시 선택해 주세요." />
   }
 
-  const course = fetchCourse('stage-anomaly')!
+  const course = fetchCourse(IMPLEMENTED_COURSE_ID)!
   const attempts = listAttempts(user.id)
   const enrollments = listEnrollments(user.id)
   const all = allLearnerStats()

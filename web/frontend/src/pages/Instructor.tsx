@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { IMPLEMENTED_COURSE_ID } from '@/data/courses'
 import { allAttempts, allLearnerStats, fetchCourse, instructorOverview } from '@/api'
 import { tenant } from '@/data/tenant'
 import { ActivityBars, LearnerProgressBars } from '@/charts/Charts'
@@ -9,7 +10,7 @@ import { relativeDay, weeklyActivity } from '@/lib/stats'
 export function Instructor() {
   const rows = instructorOverview()
   const stats = allLearnerStats()
-  const course = fetchCourse('stage-anomaly')!
+  const course = fetchCourse(IMPLEMENTED_COURSE_ID)!
   const activity = weeklyActivity(allAttempts())
 
   const completed = rows.filter((r) => r.enrollment.status === 'completed').length

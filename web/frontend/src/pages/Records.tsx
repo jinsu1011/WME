@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { fetchCourse, listAttempts } from '@/api'
-import { Badge, DataSourceBadge } from '@/components/Badge'
+import { Badge, InputSourceBadge } from '@/components/Badge'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { scoreBand } from '@/charts/theme'
 import { attemptScorePct, relativeDay } from '@/lib/stats'
@@ -26,7 +26,7 @@ export function Records() {
               <tr>
                 <th className="px-5 py-3">시도</th>
                 <th className="px-5 py-3">과정</th>
-                <th className="px-5 py-3">데이터 출처</th>
+                <th className="px-5 py-3">입력 출처</th>
                 <th className="px-5 py-3">상태</th>
                 <th className="px-5 py-3 text-right">달성도</th>
                 <th className="px-5 py-3 text-right">일시</th>
@@ -38,16 +38,19 @@ export function Records() {
                 const band = pct !== null ? scoreBand(pct) : null
                 return (
                   <tr key={a.id} className="transition hover:bg-slate-50/70">
-                    <td className="px-5 py-3.5 font-medium text-slate-700">{a.attemptNo}차</td>
-                    <td className="px-5 py-3.5 text-slate-600">{fetchCourse(a.courseId)?.title}</td>
+                    <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-700">{a.attemptNo}차</td>
+                    <td className="max-w-[230px] truncate px-5 py-3.5 text-slate-600">{fetchCourse(a.courseId)?.title}</td>
                     <td className="px-5 py-3.5">
-                      <DataSourceBadge value={a.source} />
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <InputSourceBadge value={a.inputSource} />
+                        {a.source === 'mock' && <Badge tone="warn">예시 데이터</Badge>}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5">
                       {a.answer ? (
                         <Link
                           to={`/attempts/${a.id}/result`}
-                          className="font-medium text-brand-700 hover:underline"
+                          className="whitespace-nowrap font-medium text-brand-700 hover:underline"
                         >
                           결과 보기
                         </Link>
@@ -64,7 +67,7 @@ export function Records() {
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-right text-slate-400">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-right text-slate-400">
                       {relativeDay(a.endedAt)}
                     </td>
                   </tr>

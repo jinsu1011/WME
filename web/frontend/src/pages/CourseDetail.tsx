@@ -1,6 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
 import { fetchCourse, listAttempts, listEnrollments } from '@/api'
-import { tenant } from '@/data/tenant'
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar } from '@/components/ui'
 import { useDemo } from '@/lib/demo'
 import { attemptScorePct, courseProgressPct, relativeDay } from '@/lib/stats'
@@ -72,6 +71,26 @@ export function CourseDetail() {
                   )
                 })}
               </ol>
+            </Card>
+          )}
+
+          {course.alignment && (
+            <Card>
+              <CardHeader
+                title="합격 기준"
+                subtitle="이 범위 안으로 두 마크를 겹치면 통과입니다"
+              />
+              <div className="flex flex-wrap gap-2 text-[13px]">
+                <span className="rounded-lg bg-slate-50 px-3 py-2 font-medium text-slate-700">
+                  위치 ±{course.alignment.tolerancePx}px
+                </span>
+                <span className="rounded-lg bg-slate-50 px-3 py-2 font-medium text-slate-700">
+                  회전 ±{course.alignment.toleranceDeg}°
+                </span>
+              </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
+                허용 오차는 교육 과정 설정값입니다. 실제 장비의 정렬 정밀도가 아닙니다.
+              </p>
             </Card>
           )}
 
@@ -167,17 +186,16 @@ export function CourseDetail() {
             )}
           </Card>
 
-          {isAvailable && (
+          {isAvailable && course.alignment && (
             <Card>
-              <CardHeader title="준비물" subtitle="실습 장치는 교육센터에서 제공합니다" />
+              <CardHeader title="준비물" subtitle="교육용 장치는 교육센터에서 제공합니다" />
               <ul className="space-y-1.5 text-[13px] text-slate-600">
-                <li>· {tenant.terms.mockup}을 올린 실습 판</li>
-                <li>· 모션 센서가 부착된 측정 보드</li>
-                <li>· USB 케이블과 노트북</li>
+                {course.alignment.materials.map((m) => (
+                  <li key={m}>· {m}</li>
+                ))}
               </ul>
               <p className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-400">
-                지금은 측정 장치가 연결되어 있지 않습니다. 연습 화면에서 현재 연결 상태를 그대로
-                표시합니다.
+                {course.alignment.controllerNotice}
               </p>
             </Card>
           )}

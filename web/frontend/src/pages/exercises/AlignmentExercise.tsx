@@ -22,7 +22,15 @@ import {
 import { KeyboardSource, TiltSource, ZERO_VELOCITY, mappingFromControl, speedFromControl } from '@/input'
 import type { TiltAttitude, TiltSource as TiltSourceType } from '@/input'
 import { ControllerPanel } from '@/components/ControllerPanel'
-import { CONTROLLER_TEXT, LEVEL_TOLERANCE_DEG } from '@/data/controllerSettings'
+import { AlignmentStage3D } from '@/components/AlignmentStage3D'
+import type { ExposureStage, StagePose } from '@/three/alignmentScene'
+import { CLEAR_EXPOSURE_EVENT, PLAY_EXPOSURE_EVENT } from '@/three/alignmentScene'
+import {
+  CONTROLLER_TEXT,
+  EXPOSURE_TEXT,
+  KEYBOARD_TILT_CONTROLS,
+  LEVEL_TOLERANCE_DEG,
+} from '@/data/controllerSettings'
 import { useDemo } from '@/lib/demo'
 
 type Phase = 'ready' | 'starting' | 'aligning' | 'confirmed'
@@ -65,6 +73,15 @@ export function AlignmentExercise({ course }: { course: Course }) {
 
   // 매 프레임 바뀌는 값은 다시 그리지 않아도 되므로 ref 에 둔다.
   const posRef = useRef({ ...settings.startOffset })
+  /**
+   * 키보드로 만든 기울기(도). 센서가 없을 때 수평 맞추기를 연습할 수 있게 한다.
+   * **저장되는 값에는 넣지 않는다.** 화면 표시와 수평 판정에만 쓴다.
+   */
+  const keyTiltRef = useRef({ roll: 0, pitch: 0 })
+  const [keyTilt, setKeyTilt] = useState({ roll: 0, pitch: 0 })
+  /** 노광·현상 연출 단계. 정렬을 확정한 뒤에만 진행한다. */
+  const [exposureStage, setExposureStage] = useState<ExposureStage>(null)
+  const stageHostRef = useRef<HTMLDivElement | null>(null)
   const samplesRef = useRef<Sample[]>([])
   const startedAtRef = useRef<string>(new Date().toISOString())
   const rafRef = useRef<number | null>(null)
@@ -91,7 +108,9 @@ export function AlignmentExercise({ course }: { course: Course }) {
   const sensorMode = inputDevice === 'model_controller'
   // 수평(평행) 허용 범위. ⚠️ 서버 과정 설정에 아직 없어 상수를 쓴다(data/controllerSettings.ts).
   const levelTolerance = LEVEL_TOLERANCE_DEG
-  const level = sensorMode && tilt.isLevel(levelTolerance)
+  const level = sensorMode
+    ? tilt.isLevel(levelTolerance)
+    : Math.abs(keyTilt.roll) <= levelTolerance && Math.abs(keyTilt.pitch) <= levelTolerance
   const ready = sensorMode ? tiltState.available : keyboard.available
 
   const within = isWithinTolerance(error.dx, error.dy, error.dTheta, settings)
@@ -123,6 +142,32 @@ export function AlignmentExercise({ course }: { course: Course }) {
     ;(window as unknown as { __wmeTilt?: TiltSourceType }).__wmeTilt = tilt
   }, [tilt])
 
+  /**
+   * 3D 뷰가 매 프레임 직접 읽는 자세.
+   * 리액트 상태(`error`)는 채널 응답을 기다리므로, 즉시 반응이 필요한 3D 는 로컬 위치를 본다.
+   */
+  function readPose(): StagePose {
+    const p = posRef.current
+    const a = sensorMode ? tilt.attitude() : null
+    const roll = sensorMode ? (a?.hasData ? a.roll : 0) : keyTiltRef.current.roll
+    const pitch = sensorMode ? (a?.hasData ? a.pitch : 0) : keyTiltRef.current.pitch
+    return {
+      x: p.x,
+      y: p.y,
+      theta: p.theta,
+      roll,
+      pitch,
+      level: Math.abs(roll) <= levelTolerance && Math.abs(pitch) <= levelTolerance,
+    }
+  }
+
+  /** 3D 장비 뷰에 연출 재생/해제를 요청한다. */
+  function sendToStage(eventName: string, detail?: unknown) {
+    stageHostRef.current
+      ?.querySelector('[aria-label^="교육용 장비 3D"]')
+      ?.dispatchEvent(new CustomEvent(eventName, { detail }))
+  }
+
   /** 회전 미세조정 버튼 — 센서 yaw 의 드리프트가 확인되기 전까지 남겨 두는 백업 입력이다. */
   function nudgeTheta(delta: number) {
     if (phase !== 'aligning') return
@@ -130,9 +175,13 @@ export function AlignmentExercise({ course }: { course: Course }) {
   }
 
   function reset() {
+    sendToStage(CLEAR_EXPOSURE_EVENT)
+    setExposureStage(null)
     channelRef.current?.close()
     channelRef.current = null
     posRef.current = { ...settings.startOffset }
+    keyTiltRef.current = { roll: 0, pitch: 0 }
+    setKeyTilt({ roll: 0, pitch: 0 })
     samplesRef.current = []
     setAttemptId(null)
     setChannelKind(null)
@@ -216,10 +265,28 @@ export function AlignmentExercise({ course }: { course: Course }) {
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - prev) / 1000)
       prev = now
-      // 키보드(X·Y·θ) + 센서 비틀기(θ). 센서 회전은 **수평이 확보된 동안에만** 반영한다.
+      // 키보드 기울기(센서가 없을 때). 누르고 있는 동안 점점 기울고 놓으면 그대로 남는다.
+      if (!sensorMode) {
+        const kt = keyboard.readTilt()
+        if (kt.vRoll !== 0 || kt.vPitch !== 0) {
+          const next = keyTiltRef.current
+          next.roll = Math.max(-25, Math.min(25, next.roll + kt.vRoll * dt))
+          next.pitch = Math.max(-25, Math.min(25, next.pitch + kt.vPitch * dt))
+        }
+      }
+
+      // 수평이 확보된 동안에만 회전 입력이 반영된다. 센서·키보드 모두 같은 규칙이다.
+      const levelNow = sensorMode
+        ? tilt.isLevel(levelTolerance)
+        : Math.abs(keyTiltRef.current.roll) <= levelTolerance &&
+          Math.abs(keyTiltRef.current.pitch) <= levelTolerance
       const k = keyboard.read()
-      const t = sensorMode && tilt.isLevel(levelTolerance) ? tilt.read() : ZERO_VELOCITY
-      const v = { vx: k.vx, vy: k.vy, vTheta: k.vTheta + t.vTheta }
+      const t = sensorMode && levelNow ? tilt.read() : ZERO_VELOCITY
+      const v = {
+        vx: k.vx,
+        vy: k.vy,
+        vTheta: (levelNow ? k.vTheta : 0) + t.vTheta,
+      }
       const p = posRef.current
       p.x += v.vx * dt
       p.y += v.vy * dt
@@ -248,6 +315,9 @@ export function AlignmentExercise({ course }: { course: Course }) {
       }
 
       setElapsedMs(Math.round(tMs))
+      if (!sensorMode && Math.round(tMs / 100) !== Math.round((tMs - 16) / 100)) {
+        setKeyTilt({ ...keyTiltRef.current })
+      }
       rafRef.current = requestAnimationFrame(tick)
     }
 
@@ -272,6 +342,8 @@ export function AlignmentExercise({ course }: { course: Course }) {
     try {
       await markPhase(attemptId, 'confirmed', last.tMs)
       setPhase('confirmed')
+      // 확정한 정렬 상태 그대로 노광·현상을 보여 준다. 기록·채점과는 무관한 표시다.
+      sendToStage(PLAY_EXPOSURE_EVENT, { dx: last.dx, dy: last.dy, dTheta: last.dTheta })
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : '정렬을 확정하지 못했습니다.')
     }
@@ -340,27 +412,58 @@ export function AlignmentExercise({ course }: { course: Course }) {
         actions={<InputDeviceBadge value={inputDevice} />}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
         <div className="space-y-4">
           <Card>
             <CardHeader
-              title="정렬 마크"
-              subtitle="고정된 마크에 조작하는 마크를 겹칩니다"
-              aside={within ? <Badge tone="ok">허용 오차 안</Badge> : <Badge tone="muted">조정 중</Badge>}
+              title="장비 뷰"
+              subtitle="스테이지 위의 기판과 그 위에 떠 있는 마스크 판입니다"
+              aside={
+                level ? <Badge tone="ok">평행 확보</Badge> : <Badge tone="muted">기울어짐</Badge>
+              }
             />
-            <div className="mx-auto max-w-[380px]">
-              <AlignmentView
-                dx={error.dx}
-                dy={error.dy}
-                dTheta={error.dTheta}
-                settings={settings}
-                within={within}
-                trail={phase === 'ready' ? undefined : trail}
-              />
+            <div ref={stageHostRef}>
+            <AlignmentStage3D
+              readPose={readPose}
+              fieldRadius={settings.fieldRadius}
+              onExposureStage={setExposureStage}
+              fallback={
+                <div className="mx-auto max-w-[380px]">
+                  <AlignmentView
+                    dx={error.dx}
+                    dy={error.dy}
+                    dTheta={error.dTheta}
+                    settings={settings}
+                    within={within}
+                    trail={phase === 'ready' ? undefined : trail}
+                  />
+                </div>
+              }
+            />
             </div>
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <AlignmentLegend settings={settings} within={within} />
-            </div>
+            {exposureStage && (
+              <div className="mt-3 rounded-lg bg-slate-50 px-3.5 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12.5px] font-semibold text-slate-800">
+                    {EXPOSURE_TEXT[exposureStage].title}
+                  </span>
+                  {exposureStage === 'result' && (
+                    within ? <Badge tone="ok">패턴이 기준 안</Badge> : <Badge tone="warn">패턴이 어긋남</Badge>
+                  )}
+                </div>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600">
+                  {exposureStage === 'result'
+                    ? within
+                      ? EXPOSURE_TEXT.result.okBody
+                      : EXPOSURE_TEXT.result.offBody
+                    : EXPOSURE_TEXT[exposureStage].body}
+                </p>
+              </div>
+            )}
+            <p className="mt-3 border-t border-slate-100 pt-3 text-[11px] leading-relaxed text-slate-400">
+              교육용 장비를 단순화해 그린 그림입니다. 실제 장비의 구조나 치수를 나타내지 않습니다.
+              {sensorMode ? ` ${settings.controllerNotice}` : ''}
+            </p>
           </Card>
 
           {phase === 'confirmed' && (
@@ -429,7 +532,11 @@ export function AlignmentExercise({ course }: { course: Course }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPhase('aligning')}
+                  onClick={() => {
+                    sendToStage(CLEAR_EXPOSURE_EVENT)
+                    setExposureStage(null)
+                    setPhase('aligning')
+                  }}
                   className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
                 >
                   다시 조정하기
@@ -440,6 +547,27 @@ export function AlignmentExercise({ course }: { course: Course }) {
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader
+              title="현미경 뷰"
+              subtitle="마크가 겹치는 정도를 여기서 읽습니다"
+              aside={within ? <Badge tone="ok">허용 오차 안</Badge> : <Badge tone="muted">조정 중</Badge>}
+            />
+            <div className="mx-auto max-w-[240px]">
+              <AlignmentView
+                dx={error.dx}
+                dy={error.dy}
+                dTheta={error.dTheta}
+                settings={settings}
+                within={within}
+                trail={phase === 'ready' ? undefined : trail}
+              />
+            </div>
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <AlignmentLegend settings={settings} within={within} />
+            </div>
+          </Card>
+
           <Card>
             <CardHeader title="남은 오차" subtitle="고정 마크 기준으로 계산한 값" />
             <ErrorReadout
@@ -536,6 +664,52 @@ export function AlignmentExercise({ course }: { course: Course }) {
                 </div>
               ))}
             </dl>
+            {!sensorMode && (
+              <>
+                <dl className="mt-2 space-y-2 border-t border-slate-100 pt-2 text-[12.5px]">
+                  {KEYBOARD_TILT_CONTROLS.map((c) => (
+                    <div key={c.keys} className="flex items-center justify-between gap-3">
+                      <dt className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600">
+                        {c.keys}
+                      </dt>
+                      <dd className="text-slate-600">{c.effect}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div
+                  className={`mt-2.5 rounded-lg px-3 py-2.5 ${
+                    level ? 'bg-ok-50/60 ring-1 ring-inset ring-ok-500/25' : 'bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11.5px] font-medium text-slate-700">
+                      기울기 좌우 {keyTilt.roll >= 0 ? '+' : ''}
+                      {keyTilt.roll.toFixed(1)}° · 앞뒤 {keyTilt.pitch >= 0 ? '+' : ''}
+                      {keyTilt.pitch.toFixed(1)}°
+                    </span>
+                    {level ? <Badge tone="ok">평행 확보</Badge> : <Badge tone="muted">기울어짐</Badge>}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                    {level ? CONTROLLER_TEXT.rotateReady : CONTROLLER_TEXT.rotateLocked}
+                  </p>
+                  {(keyTilt.roll !== 0 || keyTilt.pitch !== 0) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        keyTiltRef.current = { roll: 0, pitch: 0 }
+                        setKeyTilt({ roll: 0, pitch: 0 })
+                      }}
+                      className="mt-2 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50"
+                    >
+                      {CONTROLLER_TEXT.levelReset}
+                    </button>
+                  )}
+                  <p className="mt-1.5 text-[10.5px] leading-relaxed text-slate-400">
+                    {CONTROLLER_TEXT.keyboardTiltHint}
+                  </p>
+                </div>
+              </>
+            )}
             {sensorMode && (
               <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11.5px] leading-relaxed text-slate-500">
                 센서 모드에서는 위치(X·Y)를 방향키로 맞추고, 회전(θ)은 모형을 비틀어 맞춥니다.

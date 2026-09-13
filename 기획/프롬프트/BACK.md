@@ -78,6 +78,14 @@ server 모드로 만든 judgment 시도의 `endedAt` 이 null 이라 목록 일�
 **`content_json` 한 글자만 바꾼다. 코드는 건드리지 않는다.**
 바꾼 뒤 시드 12건 점수가 그대로인지 확인한다.
 
+### 3-b. `control.keyboard` 에 기울기 키 자리 추가 (HEADER 결정)
+
+FRONT 가 키보드 기울기 조작(W/A/S/D)을 넣었는데, 그 안내 문구가
+`src/data/controllerSettings.ts` 상수에 있다. 조작 안내는 과정 설정값이어야 한다(결정 4).
+
+`content_json.control.keyboard` 에 기울기 키 항목을 추가한다.
+값이 서버에서 오면 FRONT 가 상수를 지운다.
+
 ### 4. LLM 실제 호출 1회 성공 ★ 키가 생기면 제일 먼저 ★
 키는 `web/backend/.env` 에 있고, 서버가 자동으로 읽지 않는다:
 

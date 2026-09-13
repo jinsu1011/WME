@@ -1,4 +1,11 @@
-import type { AlignmentEvent, AlignmentSummary, Attempt, Feedback, Sample } from '@/types'
+import type {
+  AlignmentEvent,
+  AlignmentSummary,
+  Attempt,
+  Feedback,
+  JudgmentSummary,
+  Sample,
+} from '@/types'
 import { learnerSeeds } from './people'
 import { getCourse, IMPLEMENTED_COURSE_ID } from './courses'
 
@@ -116,7 +123,7 @@ function sampleFeedback(rubric: number[], seedIndex: number, summary: AlignmentS
 }
 
 /** 시드 프로필을 실제 attempt 레코드로 펼친다. 집계는 전부 이 레코드에서 계산한다. */
-export const seedAttempts: Attempt[] = learnerSeeds.flatMap((s) =>
+const alignmentSeedAttempts: Attempt[] = learnerSeeds.flatMap((s) =>
   s.attempts.map((a, i): Attempt => {
     const submitted = a.rubric !== null
     const level = a.rubric ? a.rubric.reduce<number>((x, y) => x + y, 0) : 0
@@ -177,3 +184,70 @@ export const seedAttempts: Attempt[] = learnerSeeds.flatMap((s) =>
     }
   }),
 )
+
+
+/**
+ * 시연용 judgment 실습 기록 1건.
+ * 새 실습 유형도 같은 기록·채점·피드백 구조를 쓴다는 것을 화면에서 보여주기 위한 것이다.
+ * 합성 기록이므로 source 는 'mock' 이다.
+ */
+const judgmentSummary: JudgmentSummary = {
+  durationMs: 415_000,
+  firstPickRank: 2,
+  orderDistance: 4,
+  top3Overlap: 2,
+  answerLength: 71,
+  passed: true,
+}
+
+export const judgmentSeedAttempt: Attempt = {
+  id: 'a-u-1-judgment-1',
+  enrollmentId: 'e-u-1-judgment',
+  userId: 'u-1',
+  courseId: 'defect-report',
+  attemptNo: 1,
+  source: 'mock',
+  inputDevice: 'keyboard',
+  status: 'feedback_ready',
+  startedAt: daysBefore(2),
+  endedAt: daysBefore(2, 11),
+  phaseMarkers: [{ phase: 'submitted', tMs: judgmentSummary.durationMs }],
+  samples: [],
+  events: [],
+  summary: judgmentSummary,
+  answer: {
+    orderedIds: ['focus', 'wedge', 'contam', 'history', 'coat'],
+    reason:
+      '가장자리만 흐리다는 점이 면 전체에 걸친 조건을 가리킨다고 보고 초점과 평행도를 앞에 두었습니다.',
+    submittedAt: daysBefore(2, 11),
+  },
+  feedback: {
+    generatedBy: 'mock',
+    good: ['권장 순서와 가까운 순서로 배열했습니다.', '판단 이유를 기록으로 남겼습니다.'],
+    improve: ['상위 3개 중 2개만 권장 상위 항목과 겹칩니다.'],
+    eventIds: [],
+    nextStep: '같은 상황을 다시 보고 두 번째·세 번째 항목의 근거도 말로 설명해 보세요.',
+    cannotJudge: [
+      '4개 기준은 이 교육 과정이 정한 것입니다. 실제 현장의 조치 순서를 확정하지 않습니다.',
+    ],
+    generatedAt: daysBefore(2, 11),
+  },
+  feedbackStatus: 'ready',
+  feedbackError: null,
+  feedbackViewedAt: daysBefore(2, 12),
+  rubricScores: [1, 1, 1, 2],
+  rubricSource: 'rule',
+  rubricReasons: [
+    '첫 번째로 고른 항목이 권장 순서에서 두 번째입니다.',
+    '권장 순서와 자리 차이의 합이 4입니다.',
+    '상위 3개 중 2개가 권장 상위 항목과 겹칩니다.',
+    '그 순서로 확인하려는 이유를 문장으로 남겼습니다.',
+  ],
+  durationSec: Math.round(judgmentSummary.durationMs / 1000),
+  courseVersion: 'course-judgment-1.0.0',
+  modelVersion: 'rule-judgment-0.1',
+  settingsVersion: 'settings-0.2',
+}
+
+/** 시드 전체 — 정렬 실습 기록 + judgment 시연 기록 1건 */
+export const seedAttempts: Attempt[] = [...alignmentSeedAttempts, judgmentSeedAttempt]

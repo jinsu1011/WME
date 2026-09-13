@@ -5,6 +5,51 @@
 
 ---
 
+## 2026-09-13 — BE 6차: 채점을 데이터로 (A) · exercise_type (B) · judgment 실습 (C)
+
+`기획/설계/실습유형_설계.md` 규격대로 A → B → C 순서로 진행했다.
+
+**A. 채점을 과정 데이터로**
+- 분석기가 `summary_json.scoring_metrics`(평평한 딕셔너리)를 만든다. 기존 필드는 그대로 뒀다.
+- `app/scoring.py` 를 규칙 해석기로 다시 썼다. threshold / categorical /
+  modifiers(adjust·capAt) / `{metric}` 치환만 지원한다. **도메인 단어가 하나도 없다**(검사 완료).
+- 정렬 실습 채점 규칙을 `content_json.scoring` 으로 옮겼다.
+- **시드 12건 재채점 결과 바뀐 점수 0건.** 추가로 옛 채점기와 새 규칙을 11만 조합으로
+  대조했고, 차이는 아래 한 가지 경우뿐이다.
+
+**B. exercise_type**
+- `courses.exercise_type` 추가(유일한 스키마 변경). 기존 DB 도 자동으로 컬럼이 붙는다.
+- 과정 응답에 `exerciseType` 추가(평평한 구조 유지).
+- `app/analysis.py` → `app/analyzers/alignment.py`. `app/analyzers/__init__.py` 가 유형으로 고른다.
+  정렬 실습 동작은 그대로다.
+
+**C. judgment 실습**
+- `app/analyzers/judgment.py` — firstPickRank / orderDistance / top3Overlap /
+  answerLength / durationMs / passed (설계서 7.5절).
+- `defect-report` 를 설계서 7절 그대로 시드에 넣었다(`available`, 시나리오·루브릭·채점 규칙 전부 데이터).
+- 제출 검증을 유형별로 갈랐다. judgment 는 `{orderedIds, reason}` 이고 항목 누락·중복·
+  없는 항목·빈 배열 전부 422.
+- u-1 에게 배정 + 시연용 시도 2건(1차 [0,0,0,0] → 2차 [2,2,2,2]).
+- LLM 프롬프트를 과정 데이터에서 조립하게 바꿨다. 시스템 프롬프트가 유형 중립이라
+  **judgment 과정도 코드 변경 없이 피드백이 나온다**(가짜 응답으로 확인).
+
+확인한 것(전부 실제 실행): 시드 점수 무변화 0건 / exerciseType 응답 /
+judgment 생성→제출→채점 / 잘못된 orderedIds 422 5종 / 정렬 실습 생성→WS→확정→제출→채점 /
+동시 요청 30개 전부 200 / judgment LLM 경로(가짜 응답, 지어낸 eventId 저장 거부까지).
+
+**HEADER 확인 필요 3건**
+1. 설계서 5.3 의 `axisInterference adjust:-1` 은 옛 코드와 한 경우에서 다르다.
+   `convergenceOrder=together`(1점) + 축 간섭이면 옛 코드는 1 유지, 새 규칙은 0.
+   시드에는 이 조합이 없어 점수 변화는 없었다. 옛 동작을 원하면 데이터에서
+   `adjust:-1` → `capAt:1` 로 바꾸면 된다(코드 수정 없음).
+2. 설계서 4절의 지표 8개 외에 `rotationOutsideComfort` / `rotationOutsideRange` 불리언을
+   추가했다. modifiers 의 `when` 이 불리언만 받으므로 "회전은 modifier"를 구현하려면 필요했다.
+3. 과정별 표현 주의사항을 `content_json.feedbackNotes` 로 넣었다(프롬프트에 NOTES 로 들어간다).
+
+LLM 실제 호출은 여전히 없다(API 키 없음).
+
+---
+
 ## 2026-09-13 — BE 5차: 기준2 재정의(HEADER) + 기준1 등급 수정
 
 - **기준2(조정 순서)**: HEADER 지시대로 `theta-then-xy` 도 2점으로 바꿨다.

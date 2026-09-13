@@ -1,148 +1,122 @@
-"""규칙 기반 루브릭 채점.
+"""채점 규칙 해석기.
 
-**이것은 AI 채점이 아니다.** 저장된 정렬 궤적과 학습자가 제출한 답변에서
-정해진 규칙으로 계산한 값이다. 응답에는 항상 rubricSource="rule" 로 표시한다.
-LLM 피드백이 성공하면 그 점수로 덮어쓰고 rubricSource="llm" 이 된다.
+**이 파일에는 도메인 지식이 없다.** 무엇을 재는 실습인지, 지표 이름이 무슨 뜻인지
+모른다. 과정 데이터(`courses.content_json.scoring`)에 적힌 규칙을 읽어서,
+분석기가 만든 `scoring_metrics` 딕셔너리에 적용할 뿐이다.
 
-이게 있어야 API 키가 없어도 "답변을 제출하면 기준별 확인이 나온다"가 성립한다.
-채점이 LLM 에만 있으면 키가 없을 때 성취도 그래프가 통째로 빈다.
+규격: 기획/설계/실습유형_설계.md 5절.
+지원하는 것은 threshold / categorical / modifiers(adjust·capAt) / {metric} 치환뿐이다.
+여기에 판단을 더 넣지 않는다. 판단이 필요하면 과정 데이터에 적는다.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
-# 분석이 내는 수렴 패턴 → 학습자가 고르는 조정 순서 선택지와 같은 말로 옮긴다
-ORDER_FROM_PATTERN = {
-    "position_first": "xy-then-theta",
-    "rotation_first": "theta-then-xy",
-    "together": "interleaved",
-    "not_converged": "unknown",
-}
+MIN_SCORE, MAX_SCORE = 0, 2
 
-ORDER_LABEL = {
-    "xy-then-theta": "위치를 먼저, 회전을 나중에",
-    "theta-then-xy": "회전을 먼저, 위치를 나중에",
-    "interleaved": "두 축을 번갈아",
-    "other": "그 밖의 순서",
-    "unknown": "판단할 수 없음",
-}
-
-# 정렬 정확도 기준: 허용 범위의 이 비율 안쪽이면 "여유 있게 맞췄다"로 본다.
-# 허용 범위 안이기만 하면 전부 2점을 주면 등급이 갈리지 않는다(실제로 확인한 문제다).
-COMFORTABLE_MARGIN = 0.6
-
-# 설명·기록 기준의 최소 길이. 내용의 좋고 나쁨은 규칙으로 보지 않는다(그건 LLM 몫이다).
-REASON_FULL_LEN = 40
-REASON_MIN_LEN = 15
+_PLACEHOLDER = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
-def observed_order(summary: dict) -> str:
-    pattern = summary.get("path_analysis", {}).get("convergence", {}).get("order")
-    return ORDER_FROM_PATTERN.get(pattern or "", "unknown")
+def _fill(text: str, metrics: dict[str, Any]) -> str:
+    """reason 안의 {지표이름} 을 값으로 바꾼다. 없는 이름은 그대로 둔다."""
+    def repl(m: re.Match) -> str:
+        name = m.group(1)
+        if name not in metrics:
+            return m.group(0)
+        value = metrics[name]
+        if isinstance(value, float):
+            return f"{value:g}"
+        return str(value)
+    return _PLACEHOLDER.sub(repl, text or "")
 
 
-def score(course: dict, summary: dict | None, answer: dict | None) -> dict[str, Any]:
-    """루브릭 4기준을 0·1·2 로 매기고, 그렇게 매긴 이유를 함께 돌려준다."""
-    levels = [0, 0, 0, 0]
+def _clamp(value: int) -> int:
+    return max(MIN_SCORE, min(MAX_SCORE, value))
+
+
+def _threshold(rule: dict, value: Any) -> tuple[int, str]:
+    """levels 를 위에서부터 보고 처음 맞는 것을 쓴다.
+
+    기본은 '작은 값이 좋다'이고 max 로 비교한다.
+    direction 이 'higher' 면 '큰 값이 좋다'이고 min 으로 비교한다.
+    경계(max/min)가 없는 항목은 나머지 전부에 해당한다.
+    """
+    higher_is_better = rule.get("direction") == "higher"
+    key = "min" if higher_is_better else "max"
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return MIN_SCORE, "값이 없어 판정할 수 없습니다."
+
+    for level in rule.get("levels", []):
+        bound = level.get(key)
+        if bound is None:
+            return _clamp(int(level.get("score", 0))), level.get("reason", "")
+        if (number >= float(bound)) if higher_is_better else (number <= float(bound)):
+            return _clamp(int(level.get("score", 0))), level.get("reason", "")
+    return MIN_SCORE, "판정할 수 없습니다."
+
+
+def _categorical(rule: dict, value: Any) -> tuple[int, str]:
+    key = str(value)
+    mapping = rule.get("map", {})
+    if key not in mapping:
+        return MIN_SCORE, "판정할 수 없습니다."
+    return _clamp(int(mapping[key])), rule.get("reasons", {}).get(key, "")
+
+
+def _apply_modifiers(rule: dict, level: int, metrics: dict[str, Any]) -> tuple[int, list[str]]:
+    """when 에 적힌 불리언 지표가 참일 때만 적용한다. 배열 순서대로."""
+    notes: list[str] = []
+    for mod in rule.get("modifiers", []):
+        flag = metrics.get(mod.get("when"))
+        if not flag:
+            continue
+        before = level
+        if "adjust" in mod:
+            level = _clamp(level + int(mod["adjust"]))
+        if "capAt" in mod:
+            level = min(level, _clamp(int(mod["capAt"])))
+        if level != before or mod.get("alwaysNote"):
+            notes.append(mod.get("reason", ""))
+    return level, notes
+
+
+def score(rules: list[dict] | None, metrics: dict[str, Any] | None,
+          rubric_len: int) -> dict[str, Any]:
+    """규칙을 적용해 기준별 0·1·2 와 그렇게 매긴 이유를 돌려준다."""
+    levels = [0] * rubric_len
     reasons: list[str] = []
 
-    if not summary or not answer:
-        return {"levels": levels, "reasons": ["채점에 필요한 기록이 없습니다."],
-                "observedOrder": "unknown", "reportedOrder": None,
-                "reportMatchesRecord": True, "scorer": "rule-align-1.0.0"}
+    if not rules or not metrics:
+        return {"levels": levels,
+                "reasons": ["채점에 필요한 기록이 없습니다."],
+                "scorer": SCORER_VERSION}
 
-    tol = course.get("content", {}).get("tolerance", {})
-    pos_tol = float(tol.get("position_px", 4.0))
-    rot_tol = float(tol.get("rotation_deg", 1.0))
+    by_criterion = {int(r.get("criterion", i)): r for i, r in enumerate(rules)}
+    for index in range(rubric_len):
+        rule = by_criterion.get(index)
+        if not rule:
+            reasons.append("이 기준의 채점 규칙이 과정에 없습니다.")
+            continue
 
-    dx = float(summary.get("final_dx", 0.0))
-    dy = float(summary.get("final_dy", 0.0))
-    dth = abs(float(summary.get("final_dtheta", 0.0)))
-    pos_err = (dx * dx + dy * dy) ** 0.5
+        value = metrics.get(rule.get("metric"))
+        kind = rule.get("type")
+        if kind == "threshold":
+            level, reason = _threshold(rule, value)
+        elif kind == "categorical":
+            level, reason = _categorical(rule, value)
+        else:
+            level, reason = MIN_SCORE, "알 수 없는 채점 방식입니다."
 
-    # --- 기준 1. 정렬 정확도 -------------------------------------------
-    comfortable = (pos_err <= pos_tol * COMFORTABLE_MARGIN
-                   and dth <= rot_tol * COMFORTABLE_MARGIN)
-    if summary.get("converged") and comfortable:
-        levels[0] = 2
-        reasons.append(f"최종 오차가 허용 범위(±{pos_tol:g}px, ±{rot_tol:g}°) 안에 여유 있게 들어왔습니다 "
-                       f"— 위치 {pos_err:.1f}px, 회전 {dth:.1f}°.")
-    elif summary.get("converged"):
-        levels[0] = 1
-        reasons.append(f"허용 범위 안이지만 경계에 가깝습니다 — 위치 {pos_err:.1f}px, 회전 {dth:.1f}° "
-                       f"(허용 ±{pos_tol:g}px, ±{rot_tol:g}°).")
-    elif pos_err <= pos_tol * 2.5 and dth <= rot_tol * 2.5:
-        levels[0] = 1
-        reasons.append("허용 범위를 조금 벗어났습니다. 오차가 큰 축을 한 번 더 줄여 보세요.")
-    else:
-        reasons.append("허용 범위 밖에서 확정했습니다. 남은 오차가 어느 축에 있는지 먼저 읽어 보세요.")
+        level, notes = _apply_modifiers(rule, level, metrics)
+        levels[index] = level
+        for text in [reason, *notes]:
+            if text:
+                reasons.append(_fill(text, metrics))
 
-    # --- 기준 2. 조정 순서 ---------------------------------------------
-    # 루브릭 본문은 "위치를 먼저 맞추고 회전을 정리하는 '등' 절차를 지켰는가" 다.
-    # "등"은 예시라는 뜻이므로, 보는 것은 **축을 섞지 않고 한 축씩 정리했는가** 다.
-    # 위치→회전이든 회전→위치든 한 축씩 끝냈으면 절차를 지킨 것으로 본다.
-    #
-    # 회전을 먼저 해서 위치가 다시 틀어졌다면 그 손해는 기준3(보정 효율)의
-    # 보정 횟수·과잉 보정에서 이미 반영된다. 같은 것을 두 번 깎지 않는다.
-    obs = observed_order(summary)
-    reported = answer.get("orderOptionId")
-    if obs == "xy-then-theta":
-        levels[1] = 2
-        reasons.append("기록상 한 축씩 순서대로 정리했습니다(위치 → 회전).")
-    elif obs == "theta-then-xy":
-        levels[1] = 2
-        reasons.append("기록상 한 축씩 순서대로 정리했습니다(회전 → 위치).")
-    elif obs == "interleaved":
-        levels[1] = 1
-        reasons.append("위치와 회전이 비슷한 시점에 정리됐습니다.")
-    else:
-        levels[1] = 0
-        reasons.append("허용 범위 안으로 들어오지 않아 조정 순서를 읽을 수 없습니다.")
+    return {"levels": levels, "reasons": reasons, "scorer": SCORER_VERSION}
 
-    # 축 간섭이 있으면 한 축씩 나눠 조정한 것으로 보기 어렵다.
-    if summary.get("path_analysis", {}).get("axisInterferenceEventIds"):
-        if levels[1] == 2:
-            levels[1] = 1
-            reasons.append("한 축을 맞추는 동안 다른 축이 함께 움직인 구간이 있습니다.")
 
-    # 적어 낸 순서와 기록이 다르면 만점을 주지 않는다.
-    matches = True
-    if reported and reported not in ("other", None) and obs != "unknown" and reported != obs:
-        matches = False
-        if levels[1] == 2:
-            levels[1] = 1
-        reasons.append(
-            f"적어 낸 순서({ORDER_LABEL.get(reported, reported)})와 "
-            f"기록에서 읽힌 순서({ORDER_LABEL.get(obs, obs)})가 다릅니다.")
-
-    # --- 기준 3. 보정 효율 ---------------------------------------------
-    over = int(summary.get("overshoot_count", 0))
-    if over == 0:
-        levels[2] = 2
-        reasons.append("목표를 지나쳤다 되돌아온 구간 없이 수렴했습니다.")
-    elif over <= 2:
-        levels[2] = 1
-        reasons.append(f"목표를 지나친 구간이 {over}회 있습니다.")
-    else:
-        reasons.append(f"목표를 지나친 구간이 {over}회로 많습니다.")
-
-    # --- 기준 4. 설명·기록 ---------------------------------------------
-    # 길이만 본다. 내용이 타당한지는 규칙으로 판단하지 않는다.
-    text = (answer.get("reason") or "").strip()
-    if len(text) >= REASON_FULL_LEN:
-        levels[3] = 2
-        reasons.append("조정 순서를 고른 이유를 문장으로 남겼습니다.")
-    elif len(text) >= REASON_MIN_LEN:
-        levels[3] = 1
-        reasons.append("이유가 짧습니다. 무엇을 보고 그렇게 판단했는지 한 문장 더 적어 보세요.")
-    else:
-        reasons.append("조정 이유가 거의 적히지 않았습니다. 결과만으로는 판단 과정을 확인할 수 없습니다.")
-
-    return {
-        "levels": levels,
-        "reasons": reasons,
-        "observedOrder": obs,
-        "reportedOrder": reported,
-        "reportMatchesRecord": matches,
-        "scorer": "rule-align-1.0.0",
-    }
+SCORER_VERSION = "rules-1.0.0"

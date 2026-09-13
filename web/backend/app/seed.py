@@ -16,11 +16,14 @@ import json
 import sys
 from datetime import datetime, timedelta, timezone
 
-from .analysis import analyze
+from .analyzers import alignment as alignment_analyzer
+from .analyzers.alignment import analyze
+from .repo import score_attempt
 from .config import DB_PATH, MODEL_VERSION, SETTINGS_VERSION
 from .course_data import CATALOG, COURSE, COURSE_ID
+from .course_judgment import JUDGMENT_COURSE, JUDGMENT_COURSE_ID
+from .analyzers import judgment as judgment_analyzer
 from .db import cursor, init_db
-from .scoring import score as rule_score
 from .trajectory import scenario
 
 KST = timezone(timedelta(hours=9))
@@ -152,8 +155,9 @@ def _insert_attempt(conn, *, attempt_id, enrollment_id, attempt_no, rubric,
         }
         # 저장하는 점수는 그 궤적과 답변을 **채점기가 실제로 읽어 계산한 값**이다.
         # 손으로 적어 넣은 숫자가 아니므로 rubric_source='rule' 이 사실과 맞는다.
-        scored = rule_score(COURSE, result.summary, answer)
-        rubric_scores = scored["levels"]
+        summary = alignment_analyzer.on_submit(COURSE, result.summary, answer)
+        result.summary.update(summary)
+        rubric_scores = score_attempt(COURSE, result.summary)["levels"]
         feedback = mock_feedback(result.summary, [
             {"id": e.id, "type": e.type} for e in result.events], rubric_scores,
             ended + timedelta(seconds=20))
@@ -198,6 +202,89 @@ def _insert_attempt(conn, *, attempt_id, enrollment_id, attempt_no, rubric,
     return out
 
 
+
+# --- 상황 판단 실습 시연용 시도 -------------------------------------------
+# 두 건을 넣는다. 1차는 순서를 크게 어긋나게, 2차는 관측을 읽고 고쳐 잡은 모습.
+JUDGMENT_ATTEMPTS = [
+    {
+        "days_ago": 4, "duration_sec": 640,
+        "orderedIds": ["history", "coat", "wedge", "focus", "contam"],
+        "reason": "정비 이력부터 봤습니다.",
+    },
+    {
+        "days_ago": 1, "duration_sec": 520,
+        "orderedIds": ["wedge", "focus", "contam", "coat", "history"],
+        "reason": "가장자리만 흐리고 중심은 정상이라서, 면 전체에 걸친 조건부터 확인하려고 "
+                  "평행도와 초점을 앞에 뒀습니다. 도포나 정비 이력은 관측이 그쪽을 가리킬 때 "
+                  "보는 게 맞다고 생각했습니다.",
+    },
+]
+
+
+def seed_judgment(conn, now) -> None:
+    """u-1 에게 상황 판단 실습을 배정하고 시연용 시도를 넣는다."""
+    enr_id = f"e-u-1-judgment"
+    conn.execute(
+        """INSERT INTO enrollments (id, user_id, course_id, status,
+                                    steps_completed_json, completed_at)
+           VALUES (?, 'u-1', ?, 'in_progress', ?, NULL)""",
+        (enr_id, JUDGMENT_COURSE_ID,
+         json.dumps(["concept", "marks", "align", "submit"], ensure_ascii=False)))
+
+    for i, spec in enumerate(JUDGMENT_ATTEMPTS, start=1):
+        attempt_id = f"{enr_id}-a{i}"
+        started = now - timedelta(days=spec["days_ago"])
+        ended = started + timedelta(seconds=spec["duration_sec"])
+        answer = {
+            "orderedIds": spec["orderedIds"],
+            "reason": spec["reason"],
+            "submittedAt": _iso(ended),
+        }
+        summary = judgment_analyzer.on_submit(
+            JUDGMENT_COURSE, None, answer, spec["duration_sec"] * 1000)
+        levels = score_attempt(JUDGMENT_COURSE, summary)["levels"]
+        metrics = summary["scoring_metrics"]
+        feedback = {
+            "generatedBy": "mock",     # 규칙 기반 샘플. AI 미연결 상태다.
+            "good": (["관측값이 먼저 가리키는 항목을 앞에 뒀습니다."]
+                     if metrics["firstPickRank"] == 1
+                     else ["확인 항목 다섯 가지의 순서를 끝까지 정했습니다."]),
+            "improve": (["권장 절차와 순서 차이가 있습니다. 관측값이 어느 범위를 "
+                         "가리키는지 다시 읽어 보세요."] if not metrics["passed"]
+                        else ["이유를 조금 더 구체적으로 적으면 다음 연습에서 비교하기 좋습니다."]),
+            "eventIds": [],
+            "nextStep": "관측값 표를 먼저 읽고, 어느 범위(면 전체 / 국소)를 가리키는지 "
+                        "정한 뒤 순서를 잡아 보세요.",
+            "cannotJudge": [
+                "권장 순서는 이 교육 과정이 정한 기준이며 모든 현장의 정답이 아닙니다.",
+                "실제 설비의 원인은 이 연습 기록으로 판단할 수 없습니다.",
+            ],
+            "generatedAt": _iso(ended + timedelta(seconds=20)),
+        }
+        conn.execute(
+            """INSERT INTO attempts
+               (id, enrollment_id, attempt_no, source, input_device, status,
+                started_at, ended_at, phase_markers_json, summary_json, answer_json,
+                feedback_json, feedback_status, feedback_error, feedback_viewed_at,
+                rubric_scores_json, rubric_source, duration_sec,
+                course_version, model_version, settings_version)
+               VALUES (?,?,?,'mock','keyboard','feedback_ready',?,?,?,?,?,?, 'ready',
+                       NULL,?,?,'rule',?,?,?,?)""",
+            (attempt_id, enr_id, i, _iso(started), _iso(ended),
+             json.dumps([{"phase": "idle", "tMs": 0},
+                         {"phase": "submitted", "tMs": spec["duration_sec"] * 1000}],
+                        ensure_ascii=False),
+             json.dumps(summary, ensure_ascii=False),
+             json.dumps(answer, ensure_ascii=False),
+             json.dumps(feedback, ensure_ascii=False),
+             _iso(ended + timedelta(minutes=1)),
+             json.dumps(levels), spec["duration_sec"],
+             JUDGMENT_COURSE["version"], MODEL_VERSION, SETTINGS_VERSION))
+        print(f"    {attempt_id}: 1순위 권장{metrics['firstPickRank']}번째, "
+              f"순서차이 {metrics['orderDistance']}, 상위3겹침 {metrics['top3Overlap']} "
+              f"→ 루브릭 {levels}")
+
+
 def clear_seed(conn) -> None:
     conn.execute("DELETE FROM attempts")          # measurements/events 는 CASCADE 로 따라 지워짐
     conn.execute("DELETE FROM enrollments")
@@ -224,10 +311,12 @@ def seed(keep: bool = False) -> None:
         for c in CATALOG:
             conn.execute(
                 """INSERT INTO courses (id, title, subtitle, description, availability,
-                                        estimated_minutes, content_json, rubric_json, version)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                                        exercise_type, estimated_minutes,
+                                        content_json, rubric_json, version)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 (c["id"], c["title"], c["subtitle"], c["description"], c["availability"],
-                 c["estimated_minutes"], json.dumps(c["content"], ensure_ascii=False),
+                 c.get("exercise_type", "alignment"), c["estimated_minutes"],
+                 json.dumps(c["content"], ensure_ascii=False),
                  json.dumps(c["rubric"], ensure_ascii=False), c["version"]))
 
         # 3) 배정 + 시도
@@ -265,7 +354,10 @@ def seed(keep: bool = False) -> None:
             print(f"  {l['id']} {l['name']:4s} 단계 {l['steps']}/5, 시도 {len(l['attempts'])}건"
                   + (f" — {', '.join(marks)}" if marks else ""))
 
-    print(f"\n시드 완료: 학습자 {len(LEARNERS)}명, 시도 {total_attempts}건")
+        print("상황 판단 실습(u-1):")
+        seed_judgment(conn, now)
+
+    print(f"\n시드 완료: 학습자 {len(LEARNERS)}명, 정렬 시도 {total_attempts}건 + 판단 시도 2건")
     print(f"DB: {DB_PATH}")
 
 

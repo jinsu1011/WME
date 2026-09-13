@@ -5,6 +5,60 @@
 
 ---
 
+## 2026-09-13 — 문구 3개 + 실습 유형 분기(exerciseType) + judgment 실습
+
+### 문구 (할 일 1)
+- `/learn` 인사말 — "{이름}님, 실장비 앞에 서기 전에 연습합니다." + 설명 한 줄
+- 대기방 — "왜 실장비가 아니라 여기서 연습하나요" 블록 추가.
+  마지막 문장("실장비 실습을 대체하지 않습니다. 그 앞에 오는 단계입니다.")은 배경을 깔아 눈에 띄게 뒀다
+- 결과 화면 맨 위 한 줄 요약 — 통과 여부 + 가장 약한 기준 하나.
+  예: "허용 범위 안에 맞췄습니다. 다만 가장 약한 기준은 '보정 효율'입니다 — 목표를 지나친 구간이 1회 있습니다."
+  판정 이유는 채점 결과(`rubricReasons`)에서만 가져온다. 없으면 기준 이름까지만 말한다
+- 문구는 전부 `src/data/copy.ts` 에 뒀다
+
+### 실습 유형 (할 일 2)
+- `Course.exerciseType` (`alignment` | `judgment`) 추가. 서버 응답에 없으면 alignment 로 본다
+- 정렬 실습을 `pages/exercises/AlignmentExercise.tsx` 로 **그대로** 옮겼다(내용 변경 없음).
+  `pages/Practice.tsx` 는 유형을 고르는 입구만 남았다
+- 라우터는 그대로(`/attempts/new`). 어떤 과정인지는 쿼리(`?courseId=`)로만 전달한다.
+  값이 없으면 지금까지처럼 정렬 과정을 연다
+
+### judgment 실습 (할 일 3·4)
+- `pages/exercises/JudgmentExercise.tsx` — 상황 카드 · 관측값 표 · 확인 순서 배열(위/아래 버튼) ·
+  이유 입력 · 제출. **제출 전에는 권장 순서와 근거가 화면 어디에도 없다**
+- 결과 화면 — 내 순서 vs 권장 순서 표(일치 항목 표시), 지표 3종, `rationale`,
+  `orderNote` 를 두 곳에 표시. 채점·피드백·담당자 파이프라인은 기존 구조 그대로 재사용
+- `src/lib/judgment.ts` — 지표 계산(firstPickRank / orderDistance / top3Overlap / passed)과
+  순서 검증. `src/lib/scoring.ts` 에 mock 모드용 규칙 채점 추가
+- mock 데이터에 `defect-report` 를 설계서 7절 그대로 채우고 available 로 바꿨다.
+  배정과 시연용 시도 1건도 시드에 넣었다
+
+**설계서와 다르게 한 것 1건 (HEADER 확인 필요)**
+`scenario.checkItems` 의 순서가 `recommendedOrder` 와 완전히 같다. 그대로 두면 화면을 열자마자
+권장 순서가 노출되고, 아무것도 하지 않고 제출해도 만점이 된다.
+그래서 화면의 **시작 순서만** 고정 규칙으로 섞는다(`initialOrder`, 과정 id 기반이라 항상 같은 순서).
+데이터는 건드리지 않았다. 설계서 쪽에서 checkItems 순서를 바꾸면 이 코드는 없어도 된다.
+
+### 확인한 것 (전부 브라우저)
+- mock 모드 judgment 전체 — 순서 섞여서 시작 → 위/아래로 배열 변경 → 제출 →
+  결과(한 줄 요약 / 순서 비교표 / 근거 / 규칙 채점 4기준) 확인
+- server 모드 judgment 전체 — 같은 흐름으로 `e-u-1-judgment-a4` 생성까지 확인
+- 정렬 실습 회귀 — 키보드 조작·정렬 확정·제출·결과(정렬 결과/보정 궤적/기준별) 전과 동일.
+  센서 모드도 패널·평행 확보·회전 잠금 그대로
+- 제출 전 권장 순서 미노출 — mock·server 양쪽에서 rationale 문장과 권장 순서가 화면에 없음을 확인
+- 담당자 화면 — 학습자 상세 제출 기록에 두 과정 기록이 모두 뜬다(어느 과정인지 구분되도록 과정 열 추가)
+- 타입 검사 · 빌드 · 린트 통과(기존 `useDemo` fast-refresh 경고 1건)
+
+### 고친 버그 (내 코드)
+- server 모드 제출에서 `orderedIds` 를 안 보내 서버가 422 로 거부했다. 유형별로 필드를 담아 보내게 고쳤다
+- 기록 출처 배지의 `live` 라벨이 "실시간 모형 측정"이라 조작 장치가 없는 실습에도 붙었다 →
+  "학습자 기록"으로 바꿨다(조작 장치는 입력 출처 배지가 따로 표시한다)
+
+### BACK 에 전달
+- 서버는 `scenario` 를 `content.scenario` 안에 준다. `alignment`·`control` 처럼 최상위로 올려 주면
+  프론트의 보정 코드를 지울 수 있다(지금은 두 위치 다 받는다)
+- server 모드에서 새로 만든 judgment 기록의 `endedAt` 이 비어 있어 목록 일시가 "기록 없음" 으로 뜬다
+
 ## 2026-09-13 — 센서 연결(Web Serial) + 센서 모드 2단계 조작
 
 - **Web Serial 연결** (`src/input/serial.ts`, `TiltSource.ts`): 연결 버튼 → `navigator.serial.requestPort()`

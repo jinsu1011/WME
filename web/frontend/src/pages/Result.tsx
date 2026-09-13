@@ -5,7 +5,10 @@ import type { Attempt, Course, User } from '@/types'
 import { Badge, InputDeviceBadge } from '@/components/Badge'
 import { Loaded } from '@/components/LoadState'
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar } from '@/components/ui'
+import { isAlignmentSummary } from '@/types'
+import type { JudgmentScenario, JudgmentSummary } from '@/types'
 import { useApi } from '@/lib/useApi'
+import { RESULT_HEADLINE, fillTemplate } from '@/data/copy'
 import { AlignmentView } from '@/components/AlignmentView'
 import { ErrorTrend } from '@/charts/Charts'
 import { scoreBand } from '@/charts/theme'
@@ -58,10 +61,49 @@ export function Result() {
   )
 }
 
+/**
+ * 결과를 한 문장으로 말한다. 숫자를 못 읽어도 통과 여부와 가장 약한 기준을 바로 알게 한다.
+ * 문장 조각은 전부 데이터에서 온다 — 기준 이름은 과정 루브릭, 판정 이유는 채점 결과.
+ */
+function headlineFor(attempt: Attempt, course: Course): string {
+  if (!attempt.answer) return RESULT_HEADLINE.noAnswer
+  if (!attempt.rubricScores) return RESULT_HEADLINE.notScored
+
+  const scores = attempt.rubricScores
+  // 통과 판정은 유형마다 다른 값에서 읽는다.
+  const passed = isAlignmentSummary(attempt.summary)
+    ? attempt.summary.converged
+    : (attempt.summary?.passed ?? false)
+  const judgment = course.exerciseType === 'judgment'
+  const lead = judgment
+    ? passed
+      ? RESULT_HEADLINE.passedJudgment
+      : RESULT_HEADLINE.failedJudgment
+    : passed
+      ? RESULT_HEADLINE.passed
+      : RESULT_HEADLINE.failed
+
+  // 가장 약한 기준 하나를 고른다. 같은 점수면 앞선 기준을 쓴다.
+  let weakIndex = 0
+  scores.forEach((level, i) => {
+    if (level < scores[weakIndex]!) weakIndex = i
+  })
+  if ((scores[weakIndex] ?? 0) >= 2) return `${lead} ${RESULT_HEADLINE.allGood}`
+
+  const short = course.rubric[weakIndex]?.short ?? ''
+  // 판정 이유는 채점 결과에서만 가져온다. 없으면 기준 문장(질문형)을 억지로 붙이지 않는다.
+  const reason = attempt.rubricReasons?.[weakIndex]
+  const tail = reason
+    ? fillTemplate(RESULT_HEADLINE.weakest, { short, reason })
+    : fillTemplate(RESULT_HEADLINE.weakestNoReason, { short })
+  return `${lead} ${passed ? RESULT_HEADLINE.butPrefix : ''}${tail}`
+}
+
 function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => void }) {
   const { attempt, course, user, siblings } = data
   const settings = course.alignment
-  const summary = attempt.summary
+  // 아래 카드들은 정렬 실습의 지표를 쓴다. 다른 유형이면 null 이 되어 그리지 않는다.
+  const summary = isAlignmentSummary(attempt.summary) ? attempt.summary : null
   const pct = attemptScorePct(attempt)
   const band = pct !== null ? scoreBand(pct) : null
   const chosenOrder = course.orderOptions.find((o) => o.id === attempt.answer?.orderOptionId)
@@ -80,9 +122,14 @@ function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => vo
         actions={
           <div className="flex items-center gap-2">
             {attempt.source === 'mock' && <Badge tone="warn">예시 데이터</Badge>}
-            <InputDeviceBadge value={attempt.inputDevice} />
+            {/* 조작 장치가 없는 실습에는 입력 출처 배지를 달지 않는다 */}
+            {course.exerciseType === 'judgment' ? (
+              <Badge tone="muted">조작 장치 없음</Badge>
+            ) : (
+              <InputDeviceBadge value={attempt.inputDevice} />
+            )}
             <Link
-              to="/attempts/new"
+              to={`/attempts/new?courseId=${course.id}`}
               className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
             >
               다시 연습
@@ -91,8 +138,23 @@ function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => vo
         }
       />
 
+      <Card className="mb-4">
+        <p className="text-[15px] font-semibold leading-relaxed text-slate-900">
+          {headlineFor(attempt, course)}
+        </p>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-4">
+          {course.exerciseType === 'judgment' && course.scenario && attempt.answer?.orderedIds && (
+            <JudgmentResult
+              scenario={course.scenario}
+              orderedIds={attempt.answer.orderedIds}
+              summary={isAlignmentSummary(attempt.summary) ? null : attempt.summary}
+            />
+          )}
+
+          {summary && (
           <Card>
             <CardHeader
               title="정렬 결과"
@@ -151,6 +213,7 @@ function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => vo
               <EmptyState title="결과 요약이 없습니다" description="기록이 부족한 연습입니다." />
             )}
           </Card>
+          )}
 
           {settings && attempt.samples.length > 1 && (
             <Card>
@@ -188,15 +251,17 @@ function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => vo
             />
             {attempt.answer ? (
               <div className="space-y-3.5">
+                {course.exerciseType === 'judgment' ? null : (
                 <Field label="적어 낸 조정 순서">
                   <div className="text-[13px] font-medium text-slate-800">
-                    {chosenOrder?.label ?? ORDER_LABEL[attempt.answer.orderOptionId] ?? '—'}
+                    {chosenOrder?.label ?? (attempt.answer.orderOptionId ? ORDER_LABEL[attempt.answer.orderOptionId] : undefined) ?? '—'}
                   </div>
                   {chosenOrder && (
                     <p className="mt-0.5 text-[12px] leading-relaxed text-slate-500">{chosenOrder.hint}</p>
                   )}
                 </Field>
-                <Field label="그 순서로 조정한 이유">
+                )}
+                <Field label={course.exerciseType === 'judgment' ? '그 순서로 확인하려는 이유' : '그 순서로 조정한 이유'}>
                   <p className="rounded-lg bg-slate-50 px-3.5 py-3 text-[13px] leading-relaxed text-slate-700">
                     {attempt.answer.reason}
                   </p>
@@ -210,7 +275,15 @@ function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => vo
             )}
           </Card>
 
-          <FeedbackCard attempt={attempt} onChanged={onChanged} />
+          <FeedbackCard
+            attempt={attempt}
+            onChanged={onChanged}
+            basis={
+              course.exerciseType === 'judgment'
+                ? '제출한 순서와 이유만 근거로 만듭니다'
+                : '기록된 궤적과 제출 답변만 근거로 만듭니다'
+            }
+          />
         </div>
 
         <div className="space-y-4">
@@ -364,7 +437,15 @@ function readableError(raw: string | null): string | null {
   }
 }
 
-function FeedbackCard({ attempt, onChanged }: { attempt: Attempt; onChanged: () => void }) {
+function FeedbackCard({
+  attempt,
+  onChanged,
+  basis,
+}: {
+  attempt: Attempt
+  onChanged: () => void
+  basis: string
+}) {
   const [retrying, setRetrying] = useState(false)
   const [retryError, setRetryError] = useState<string | null>(null)
 
@@ -388,7 +469,7 @@ function FeedbackCard({ attempt, onChanged }: { attempt: Attempt; onChanged: () 
     <Card>
       <CardHeader
         title="학습 피드백"
-        subtitle="기록된 궤적과 제출 답변만 근거로 만듭니다"
+        subtitle={basis}
         aside={
           attempt.feedback ? (
             attempt.feedback.generatedBy === 'mock' ? (
@@ -463,6 +544,89 @@ function FeedbackCard({ attempt, onChanged }: { attempt: Attempt; onChanged: () 
         </div>
       )}
     </Card>
+  )
+}
+
+/**
+ * judgment 실습 결과 — 내가 정한 순서와 이 과정이 권장하는 순서를 나란히 둔다.
+ * 권장 순서는 **정답이 아니라 이 교육 과정이 정한 기준**이며, 그 사실을 항상 함께 표시한다.
+ */
+function JudgmentResult({
+  scenario,
+  orderedIds,
+  summary,
+}: {
+  scenario: JudgmentScenario
+  orderedIds: string[]
+  summary: JudgmentSummary | null
+}) {
+  const labelOf = (id: string) => scenario.checkItems.find((c) => c.id === id)?.label ?? id
+  const rows = Math.max(orderedIds.length, scenario.recommendedOrder.length)
+
+  return (
+    <>
+      <Card>
+        <CardHeader
+          title="확인 순서"
+          subtitle="내가 정한 순서와 이 과정이 권장하는 순서입니다"
+          aside={
+            summary ? (
+              <Badge tone={summary.passed ? 'ok' : 'warn'}>
+                {summary.passed ? '권장 순서와 가까움' : '권장 순서와 차이 있음'}
+              </Badge>
+            ) : undefined
+          }
+        />
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px]">
+            <thead className="text-[11px] font-medium text-slate-400">
+              <tr>
+                <th className="w-8 py-2">#</th>
+                <th className="py-2">내가 정한 순서</th>
+                <th className="py-2">이 과정의 권장 순서</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 border-t border-slate-100">
+              {Array.from({ length: rows }, (_, i) => {
+                const mine = orderedIds[i]
+                const recommended = scenario.recommendedOrder[i]
+                const same = mine !== undefined && mine === recommended
+                return (
+                  <tr key={i}>
+                    <td className="py-2.5 text-slate-400">{i + 1}</td>
+                    <td className={`py-2.5 pr-3 ${same ? 'font-medium text-ok-500' : 'text-slate-800'}`}>
+                      {mine ? labelOf(mine) : '—'}
+                      {same && <span className="ml-1.5 text-[10px] text-ok-500">같음</span>}
+                    </td>
+                    <td className="py-2.5 text-slate-600">
+                      {recommended ? labelOf(recommended) : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        {summary && (
+          <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
+            <Metric label="첫 항목 순위" value={summary.firstPickRank} unit="번째" sub="권장 순서 기준" />
+            <Metric label="순서 차이 합" value={summary.orderDistance} sub="0이면 완전 일치" />
+            <Metric label="상위 3개 일치" value={`${summary.top3Overlap}/3`} sub="권장 상위 항목과" />
+          </dl>
+        )}
+        <p className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-400">
+          {scenario.orderNote}
+        </p>
+      </Card>
+
+      <Card>
+        <CardHeader title="왜 그 순서인가" subtitle="이 과정이 권장 순서를 정한 근거입니다" />
+        <p className="text-[13px] leading-relaxed text-slate-700">{scenario.rationale}</p>
+        <p className="mt-2.5 rounded-lg bg-slate-50 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-slate-500">
+          {scenario.orderNote}
+        </p>
+      </Card>
+    </>
   )
 }
 

@@ -21,7 +21,8 @@ import { learners, seedEnrollments, users } from '@/data/people'
 import { seedAttempts } from '@/data/seedAttempts'
 import { computeLearnerStats } from '@/lib/stats'
 import { detectOvershoots, isWithinTolerance } from '@/lib/alignment'
-import { scoreAlignment } from '@/lib/scoring'
+import { scoreAlignment, scoreJudgment } from '@/lib/scoring'
+import { judgmentMetrics } from '@/lib/judgment'
 import type {
   AlignmentChannel,
   ApiClient,
@@ -207,7 +208,7 @@ async function createAttempt(input: CreateAttemptInput): Promise<Attempt> {
     rubricScores: null,
     rubricSource: null,
     rubricReasons: null,
-    durationSec: Math.round((summary?.durationMs ?? 0) / 1000),
+    durationSec: Math.round((summary?.durationMs ?? input.durationMs ?? 0) / 1000),
     courseVersion: course?.version ?? 'unknown',
     modelVersion: 'rule-align-0.1',
     settingsVersion: 'settings-0.2',
@@ -251,9 +252,26 @@ async function submitAnswer(
   if (!course) return undefined
 
   const full: Answer = { ...answer, submittedAt: new Date().toISOString() }
-  const scored = scoreAlignment(course, target, full)
+
+  // 유형에 따라 요약과 채점 규칙이 다르다. 플랫폼(기록·루브릭·피드백 구조)은 같다.
+  let scored
+  let summary = target.summary
+  if (course.exerciseType === 'judgment' && course.scenario && full.orderedIds) {
+    const metrics = judgmentMetrics(
+      full.orderedIds,
+      course.scenario,
+      full.reason.trim().length,
+      target.durationSec * 1000,
+    )
+    summary = metrics
+    scored = scoreJudgment(course, metrics, full)
+  } else {
+    scored = scoreAlignment(course, target, full)
+  }
+
   const updated: Attempt = {
     ...target,
+    summary,
     answer: full,
     status: 'feedback_ready',
     rubricScores: scored.levels,

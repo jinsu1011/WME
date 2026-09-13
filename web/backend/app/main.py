@@ -13,11 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import repo
-from .analysis import analyze
+from . import analyzers
 from .config import (COURSE_VERSION, MODEL_VERSION, SETTINGS_VERSION, llm_configured)
 from .db import connect, init_db
 from .llm.service import FeedbackError, generate
-from .scoring import score as rule_score
+from .repo import score_attempt
 
 app = FastAPI(title="WME — We Make Experts API", version="0.1.0")
 
@@ -70,8 +70,14 @@ class PhaseBody(BaseModel):
 
 
 class SubmissionBody(BaseModel):
-    # 학습자는 근거 구간을 고르지 않는다. "어떤 순서로 조정했는지"만 고르고 이유를 쓴다.
-    orderOptionId: str
+    """제출 본문. 어떤 필드를 쓰는지는 과정의 실습 유형이 정한다.
+
+    alignment: {orderOptionId, reason}
+    judgment : {orderedIds, reason}
+    검사는 각 분석기의 build_answer() 가 한다.
+    """
+    orderOptionId: str | None = None
+    orderedIds: list[str] | None = None
     reason: str = Field(min_length=1, max_length=2000)
 
 
@@ -160,13 +166,17 @@ def create_attempt(body: AttemptCreate, conn=Depends(db)) -> dict:
     enr = repo.ensure_enrollment(conn, body.userId, body.courseId)
     no = repo.next_attempt_no(conn, enr["id"])       # 재실습은 항상 새 attempt
     attempt_id = f"{enr['id']}-a{no}"
+    # 측정이 없는 유형(읽고 판단해서 적는 실습)은 확정할 측정이 없으므로
+    # 곧바로 제출 가능한 상태에서 시작한다.
+    analyzer = analyzers.get(course.get("exerciseType"))
+    start_status = "aligning" if analyzer.MEASURED else "aligned"
     conn.execute(
         """INSERT INTO attempts (id, enrollment_id, attempt_no, source, input_device,
                                  status, started_at, phase_markers_json, duration_sec,
                                  course_version, model_version, settings_version)
-           VALUES (?,?,?,?,?, 'aligning', ?, '[]', 0, ?,?,?)""",
-        (attempt_id, enr["id"], no, body.source, body.inputDevice, repo.now_iso(),
-         course["version"], MODEL_VERSION, SETTINGS_VERSION))
+           VALUES (?,?,?,?,?, ?, ?, '[]', 0, ?,?,?)""",
+        (attempt_id, enr["id"], no, body.source, body.inputDevice, start_status,
+         repo.now_iso(), course["version"], MODEL_VERSION, SETTINGS_VERSION))
     row = repo.get_attempt_row(conn, attempt_id)
     return repo.attempt_to_dict(conn, row)  # type: ignore[arg-type]
 
@@ -206,8 +216,9 @@ def _finalize(conn, attempt_id: str) -> None:
     course = repo.get_course(conn, enr["course_id"])
     tol = (course or {}).get("content", {}).get("tolerance")
 
-    result = analyze([(r["t_ms"], r["wafer_x"], r["wafer_y"], r["wafer_theta"])
-                      for r in samples], tolerance=tol, event_prefix=attempt_id)
+    analyzer = analyzers.get((course or {}).get("exerciseType"))
+    result = analyzer.analyze([(r["t_ms"], r["wafer_x"], r["wafer_y"], r["wafer_theta"])
+                               for r in samples], tolerance=tol, event_prefix=attempt_id)
 
     # 자동 분석 결과만 다시 만든다. 학습자가 지정한 manual 구간은 지우지 않는다.
     conn.execute("DELETE FROM events WHERE attempt_id = ? AND type != 'manual'", (attempt_id,))
@@ -250,24 +261,31 @@ def post_submission(attempt_id: str, body: SubmissionBody, conn=Depends(db)) -> 
     enr = conn.execute("SELECT course_id FROM enrollments WHERE id = ?",
                        (row["enrollment_id"],)).fetchone()
     course = repo.get_course(conn, enr["course_id"])
-    order_ids = {o["id"] for o in (course or {}).get("content", {}).get("orderOptions", [])}
-    if order_ids and body.orderOptionId not in order_ids:
-        raise HTTPException(422, f"이 과정에 없는 조정 순서입니다: {body.orderOptionId}")
+    if not course:
+        raise HTTPException(404, "과정을 찾을 수 없습니다.")
 
-    answer = {
-        "orderOptionId": body.orderOptionId,
-        # 학습자가 쓴 글은 데이터다. 내용을 해석하거나 명령으로 따르지 않는다.
-        "reason": body.reason,
-        "submittedAt": repo.now_iso(),
-    }
+    # 답변의 모양과 검사는 실습 유형이 정한다.
+    analyzer = analyzers.get(course.get("exerciseType"))
+    try:
+        answer = analyzer.build_answer(course, body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    # 학습자가 쓴 글은 데이터다. 내용을 해석하거나 명령으로 따르지 않는다.
+    answer["reason"] = body.reason
+    answer["submittedAt"] = repo.now_iso()
     # 답변을 저장하면서 바로 규칙 기반으로 채점한다.
     # LLM 이 없거나 실패해도 기준별 확인은 나와야 하기 때문이다.
     # 이 점수는 AI 채점이 아니며 rubric_source='rule' 로 출처를 남긴다.
-    scored = rule_score(course or {}, json.loads(row["summary_json"] or "null"), answer)
+    started = row["started_at"]
+    elapsed_ms = repo.elapsed_ms(started)
+    summary = analyzer.on_submit(course, json.loads(row["summary_json"] or "null"),
+                                 answer, elapsed_ms)
+    scored = score_attempt(course, summary)
     conn.execute(
-        """UPDATE attempts SET answer_json = ?, status = 'submitted',
+        """UPDATE attempts SET answer_json = ?, status = 'submitted', summary_json = ?,
            rubric_scores_json = ?, rubric_source = 'rule' WHERE id = ?""",
         (json.dumps(answer, ensure_ascii=False),
+         json.dumps(summary, ensure_ascii=False),
          json.dumps(scored["levels"]), attempt_id))
     return repo.attempt_to_dict(conn, repo.get_attempt_row(conn, attempt_id),  # type: ignore[arg-type]
                                 include_samples=False)

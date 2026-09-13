@@ -39,10 +39,14 @@ export function AvailabilityBadge({ value }: { value: Availability }) {
 }
 
 /** 측정 데이터의 출처. 합성 데이터를 실측처럼 보이게 하지 않기 위해 항상 표시한다. */
+/**
+ * 기록의 출처. 시연용 예시와 학습자가 실제로 남긴 기록을 섞어 보여주지 않는다.
+ * 실습 유형이 둘 이상이므로 조작 장치를 뜻하는 말은 쓰지 않는다(그건 입력 출처 배지가 맡는다).
+ */
 const SOURCE_META: Record<DataSource, { label: string; tone: Tone }> = {
   mock: { label: '예시 데이터', tone: 'warn' },
   replay: { label: '저장된 측정 재생', tone: 'brand' },
-  live: { label: '실시간 모형 측정', tone: 'ok' },
+  live: { label: '학습자 기록', tone: 'ok' },
 }
 
 export function DataSourceBadge({ value }: { value: DataSource }) {

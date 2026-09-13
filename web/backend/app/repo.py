@@ -26,6 +26,17 @@ def now_iso() -> str:
     return datetime.now(KST).replace(microsecond=0).isoformat()
 
 
+def elapsed_ms(started_at: str | None) -> int:
+    """시작 시각부터 지금까지의 경과 시간(ms). 측정이 없는 유형의 소요 시간에 쓴다."""
+    if not started_at:
+        return 0
+    try:
+        start = datetime.fromisoformat(started_at)
+    except ValueError:
+        return 0
+    return max(0, int((datetime.now(KST) - start).total_seconds() * 1000))
+
+
 def _j(value: str | None, default: Any = None) -> Any:
     return json.loads(value) if value else default
 
@@ -44,11 +55,21 @@ SUMMARY_KEY_MAP = {
 
 
 def summary_to_camel(summary: dict | None) -> dict | None:
+    """저장된 summary 를 화면이 읽는 모양으로 바꾼다.
+
+    정렬 실습 전용 키는 있을 때만 옮긴다. 측정이 없는 유형은 그 키가 없다.
+    scoringMetrics 는 유형과 상관없이 항상 함께 보낸다(채점의 근거가 되는 값들이다).
+    """
     if not summary:
         return None
-    out = {camel: summary.get(snake) for snake, camel in SUMMARY_KEY_MAP.items()}
+    out: dict[str, Any] = {}
+    for snake, camel in SUMMARY_KEY_MAP.items():
+        if snake in summary:
+            out[camel] = summary[snake]
     if "path_analysis" in summary:
         out["pathAnalysis"] = summary["path_analysis"]   # 규칙 기반 분석 결과(부가)
+    if "scoring_metrics" in summary:
+        out["scoringMetrics"] = summary["scoring_metrics"]
     return out
 
 
@@ -91,6 +112,7 @@ def course_row_to_dict(row: sqlite3.Row) -> dict:
         "subtitle": row["subtitle"],
         "description": row["description"],
         "availability": row["availability"],
+        "exerciseType": row["exercise_type"],
         "estimatedMinutes": row["estimated_minutes"],
         "objectives": content.get("objectives", []),
         "prerequisites": content.get("prerequisites", []),
@@ -193,11 +215,9 @@ def attempt_to_dict(conn, row: sqlite3.Row, *, include_samples: bool = True) -> 
     # (저장해두면 규칙이 바뀌었을 때 화면 설명과 실제 점수가 어긋난다).
     data["rubricReasons"] = []
     if row["rubric_source"] == "rule" and data["answer"]:
-        from .scoring import score
         course = get_course(conn, data["courseId"]) if data["courseId"] else None
         if course:
-            data["rubricReasons"] = score(course, _j(row["summary_json"]),
-                                          data["answer"])["reasons"]
+            data["rubricReasons"] = score_attempt(course, _j(row["summary_json"]))["reasons"]
     return data
 
 
@@ -258,6 +278,18 @@ def events_for_llm(conn, attempt_id: str) -> list[dict]:
         "SELECT * FROM events WHERE attempt_id = ? ORDER BY start_ms, id", (attempt_id,))
     return [{"id": r["id"], "start_ms": r["start_ms"], "end_ms": r["end_ms"],
              "type": r["type"], "metrics": _j(r["metrics_json"], {})} for r in rows]
+
+
+def score_attempt(course: dict | None, summary: dict | None) -> dict:
+    """과정에 적힌 채점 규칙을 그 시도의 scoring_metrics 에 적용한다.
+
+    채점기에는 과정도 시도도 넘기지 않는다. 규칙과 지표만 넘긴다.
+    """
+    from .scoring import score
+    rules = (course or {}).get("content", {}).get("scoring")
+    rubric_len = len((course or {}).get("rubric", []))
+    metrics = (summary or {}).get("scoring_metrics")
+    return score(rules, metrics, rubric_len)
 
 
 def can_transition(current: str, target: str) -> bool:

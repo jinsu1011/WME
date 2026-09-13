@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { listAttempts, listCourses, listEnrollments, statsFor } from '@/api'
 import type { Attempt, Course, Enrollment, LearnerStats } from '@/types'
 import { tenant } from '@/data/tenant'
+import { HOME_INTRO, fillTemplate } from '@/data/copy'
 import { Badge } from '@/components/Badge'
 import { ApiModeBadge, Loaded } from '@/components/LoadState'
 import { Card, EmptyState, PageHeader, ProgressBar } from '@/components/ui'
@@ -42,8 +43,12 @@ export function PracticeList() {
     <>
       <PageHeader
         eyebrow={`${tenant.companyName} · ${tenant.programTitle}`}
-        title={currentUser ? `${currentUser.displayName}님, 오늘도 한 번 연습해 볼까요?` : '오늘도 한 번 연습해 볼까요?'}
-        description="평가가 아니라 연습입니다. 여러 번 할수록 기록이 쌓이고 변화가 보입니다."
+        title={
+          currentUser
+            ? fillTemplate(HOME_INTRO.title, { name: currentUser.displayName })
+            : HOME_INTRO.titleWithoutName
+        }
+        description={HOME_INTRO.description}
         actions={<ApiModeBadge />}
       />
       <Loaded state={state} label="실습 목록을 불러오는 중입니다">

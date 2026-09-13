@@ -5,8 +5,9 @@
 """
 from __future__ import annotations
 
-from .analysis import DEFAULT_TOLERANCE
+from .analyzers.alignment import DEFAULT_TOLERANCE
 from .config import COURSE_VERSION
+from .course_judgment import JUDGMENT_COURSE, JUDGMENT_COURSE_ID
 
 COURSE_ID = "photo-align"
 
@@ -44,6 +45,84 @@ ORDER_OPTIONS = [
     {"id": "other", "label": "그 밖의 순서로 진행했다",
      "hint": "위 셋에 해당하지 않는 경우입니다. 이유란에 실제 순서를 적어 주세요."},
 ]
+
+# 채점 규칙 — 실습유형_설계.md 5·6절.
+# 예전에 scoring.py 안에 파이썬으로 박혀 있던 판단을 그대로 데이터로 옮긴 것이다.
+# 허용 오차는 위치 ±4px, 회전 ±1.0° (content.tolerance) 이고,
+# 그 60%(2.4px / 0.6°) 안쪽이면 "여유 있게"로 본다.
+SCORING = [
+    {
+        "criterion": 0,
+        "metric": "finalPositionError",
+        "type": "threshold",
+        "unit": "px",
+        "levels": [
+            {"max": 2.4, "score": 2,
+             "reason": "최종 오차가 허용 범위 안에 여유 있게 들어왔습니다 "
+                       "— 위치 {finalPositionError}px, 회전 {finalRotationError}°."},
+            {"max": 4.0, "score": 1,
+             "reason": "허용 범위 안이지만 경계에 가깝습니다 "
+                       "— 위치 {finalPositionError}px, 회전 {finalRotationError}°."},
+            {"max": 10.0, "score": 1,
+             "reason": "허용 범위를 조금 벗어났습니다. 오차가 큰 축을 한 번 더 줄여 보세요."},
+            {"score": 0,
+             "reason": "허용 범위 밖에서 확정했습니다. 남은 오차가 어느 축에 있는지 먼저 읽어 보세요."},
+        ],
+        # 위치로 등급을 정하고, 회전이 나쁘면 그만큼 내린다(설계서 6절 "회전은 modifier").
+        "modifiers": [
+            {"when": "rotationOutsideComfort", "capAt": 1,
+             "reason": "회전 오차 {finalRotationError}° 가 허용 범위의 여유 구간을 넘었습니다."},
+            {"when": "rotationOutsideRange", "capAt": 0,
+             "reason": "회전 오차 {finalRotationError}° 가 허용 범위를 크게 벗어났습니다."},
+        ],
+    },
+    {
+        "criterion": 1,
+        "metric": "convergenceOrder",
+        "type": "categorical",
+        "map": {"position_first": 2, "rotation_first": 2, "together": 1,
+                "not_converged": 0, "unknown": 0},
+        "reasons": {
+            "position_first": "기록상 한 축씩 순서대로 정리했습니다(위치 → 회전).",
+            "rotation_first": "기록상 한 축씩 순서대로 정리했습니다(회전 → 위치).",
+            "together": "위치와 회전이 비슷한 시점에 정리됐습니다.",
+            "not_converged": "허용 범위 안으로 들어오지 않아 조정 순서를 읽을 수 없습니다.",
+            "unknown": "허용 범위 안으로 들어오지 않아 조정 순서를 읽을 수 없습니다.",
+        },
+        "modifiers": [
+            {"when": "axisInterference", "adjust": -1,
+             "reason": "한 축을 맞추는 동안 다른 축이 함께 움직인 구간이 있습니다."},
+            {"when": "reportedOrderMismatch", "capAt": 1,
+             "reason": "적어 낸 순서와 기록에서 읽힌 순서가 다릅니다."},
+        ],
+    },
+    {
+        "criterion": 2,
+        "metric": "overshootCount",
+        "type": "threshold",
+        "unit": "회",
+        "levels": [
+            {"max": 0, "score": 2, "reason": "목표를 지나쳤다 되돌아온 구간 없이 수렴했습니다."},
+            {"max": 2, "score": 1, "reason": "목표를 지나친 구간이 {overshootCount}회 있습니다."},
+            {"score": 0, "reason": "목표를 지나친 구간이 {overshootCount}회로 많습니다."},
+        ],
+    },
+    {
+        "criterion": 3,
+        "metric": "answerLength",
+        "type": "threshold",
+        "direction": "higher",
+        "unit": "자",
+        "levels": [
+            {"min": 40, "score": 2, "reason": "조정 순서를 고른 이유를 문장으로 남겼습니다."},
+            {"min": 15, "score": 1,
+             "reason": "이유가 짧습니다. 무엇을 보고 그렇게 판단했는지 한 문장 더 적어 보세요."},
+            {"score": 0,
+             "reason": "조정 이유가 거의 적히지 않았습니다. 결과만으로는 판단 과정을 확인할 수 없습니다."},
+        ],
+    },
+]
+
 
 CONTENT = {
     "objectives": [
@@ -104,6 +183,12 @@ CONTENT = {
         ],
     },
     "orderOptions": ORDER_OPTIONS,
+    "scoring": SCORING,
+    # 피드백에서 반드시 지킬 표현. 코드가 아니라 과정 데이터에 둔다.
+    "feedbackNotes": [
+        "허용 오차는 이 교육 과정의 설정값이며 실제 장비의 정렬 정밀도가 아니다.",
+        "센서를 붙인 모형은 실제 장비의 조작기를 대신하는 교육용 컨트롤러다.",
+    ],
 }
 
 COURSE = {
@@ -120,6 +205,7 @@ COURSE = {
     "estimated_minutes": 30,
     "content": CONTENT,
     "rubric": RUBRIC,
+    "exercise_type": "alignment",
     "version": COURSE_VERSION,
 }
 
@@ -133,7 +219,8 @@ def _stub(cid: str, title: str, subtitle: str, description: str,
           objectives: list[str] | None = None) -> dict:
     return {
         "id": cid, "title": title, "subtitle": subtitle, "description": description,
-        "availability": availability, "estimated_minutes": minutes,
+        "availability": availability, "exercise_type": "alignment",
+        "estimated_minutes": minutes,
         "content": {"objectives": objectives or [], "prerequisites": [],
                     "steps": [], "orderOptions": []},
         "rubric": [], "version": version,
@@ -153,7 +240,5 @@ CATALOG = [
     _stub("exposure-basics", "노광 조건의 기본", "조건이 결과를 바꾸는 방식",
           "노광 조건이 패턴 결과에 어떻게 반영되는지 개념 수준에서 다룰 예정입니다.",
           "coming_soon", 30, "draft"),
-    _stub("defect-report", "공정 이상 상황 보고", "관측 사실과 해석의 구분",
-          "이상 상황을 보고할 때 사실과 추정을 어떻게 구분해 적는지 다룰 예정입니다.",
-          "coming_soon", 30, "draft"),
+    JUDGMENT_COURSE,        # defect-report — 상황 판단 실습(실습유형_설계.md 7절)
 ]

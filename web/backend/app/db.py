@@ -42,6 +42,7 @@ def cursor() -> Iterator[sqlite3.Connection]:
 # 스키마에 나중에 추가된 컬럼. 이미 만들어진 DB 를 지우지 않고 따라가게 한다.
 LATER_COLUMNS = [
     ("attempts", "rubric_source", "TEXT"),
+    ("courses", "exercise_type", "TEXT NOT NULL DEFAULT 'alignment'"),
 ]
 
 

@@ -56,6 +56,19 @@ function toError(status: number, detail: unknown): Error {
   return new Error(text)
 }
 
+/**
+ * 과정 응답을 화면이 쓰는 형태로 맞춘다.
+ * - `exerciseType` 이 없으면 alignment 로 본다(서버 기본값과 같다)
+ * - `scenario` 는 최상위에 올 수도, `content` 안에 있을 수도 있다. 둘 다 받는다
+ */
+function normalizeCourse(raw: Course & { content?: { scenario?: Course['scenario'] } }): Course {
+  return {
+    ...raw,
+    exerciseType: raw.exerciseType ?? 'alignment',
+    scenario: raw.scenario ?? raw.content?.scenario ?? null,
+  }
+}
+
 /** 서버 응답에 samples 가 없을 수 있다. 화면이 항상 배열을 볼 수 있게 채운다. */
 function normalizeAttempt(raw: Attempt): Attempt {
   return {
@@ -71,12 +84,13 @@ function normalizeAttempt(raw: Attempt): Attempt {
 }
 
 async function listCourses(): Promise<Course[]> {
-  return request<Course[]>('/api/courses')
+  const list = await request<Course[]>('/api/courses')
+  return list.map(normalizeCourse)
 }
 
 async function fetchCourse(id: string): Promise<Course | undefined> {
   try {
-    return await request<Course>(`/api/courses/${id}`)
+    return normalizeCourse(await request<Course>(`/api/courses/${id}`))
   } catch {
     return undefined
   }
@@ -214,7 +228,12 @@ async function submitAnswer(
 ): Promise<Attempt | undefined> {
   const raw = await request<Attempt>(`/api/attempts/${attemptId}/submission`, {
     method: 'POST',
-    body: JSON.stringify({ orderOptionId: answer.orderOptionId, reason: answer.reason }),
+    // 실습 유형에 따라 답변 형태가 다르다. 있는 것만 보낸다(서버가 형태를 검증한다).
+    body: JSON.stringify({
+      ...(answer.orderOptionId ? { orderOptionId: answer.orderOptionId } : {}),
+      ...(answer.orderedIds ? { orderedIds: answer.orderedIds } : {}),
+      reason: answer.reason,
+    }),
   })
   return normalizeAttempt(raw)
 }

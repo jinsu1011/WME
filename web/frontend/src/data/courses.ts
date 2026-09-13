@@ -15,6 +15,7 @@ export const courses: Course[] = [
     description:
       '감광액 도포부터 노광·현상까지 포토공정의 흐름과 각 단계가 담당하는 역할을 훑는 입문 과정입니다. 현재는 소개 내용만 열람할 수 있습니다.',
     availability: 'preview',
+    exerciseType: 'alignment',
     estimatedMinutes: 20,
     objectives: ['포토공정의 단계 순서를 설명한다', '각 단계가 왜 필요한지 예시로 든다'],
     prerequisites: [],
@@ -23,6 +24,7 @@ export const courses: Course[] = [
     rubric: [],
     alignment: null,
     control: null,
+    scenario: null,
     version: 'preview-0.1',
   },
   {
@@ -35,6 +37,7 @@ export const courses: Course[] = [
       '이 과정에서는 고정된 마스크 마크에 어긋난 웨이퍼 마크를 허용 오차 안으로 맞추고, ' +
       '어떤 순서로 조정했는지와 그 이유를 적어 연습 피드백을 받습니다.',
     availability: 'available',
+    exerciseType: 'alignment',
     estimatedMinutes: 30,
     objectives: [
       '노광 전 정렬이 왜 필요한지 설명한다',
@@ -128,6 +131,7 @@ export const courses: Course[] = [
       maxSpeedDeg: 30,
       keyboard: { movePxPerSec: 90, rotateDegPerSec: 22, fineFactor: 0.25 },
     },
+    scenario: null,
     version: 'course-2.0.0',
   },
   {
@@ -136,6 +140,7 @@ export const courses: Course[] = [
     subtitle: '조정 과정과 결과를 남기는 방법',
     description: '정렬 작업에서 무엇을 어떤 순서로 기록해야 하는지 다룰 예정입니다.',
     availability: 'coming_soon',
+    exerciseType: 'alignment',
     estimatedMinutes: 25,
     objectives: [],
     prerequisites: [],
@@ -144,6 +149,7 @@ export const courses: Course[] = [
     rubric: [],
     alignment: null,
     control: null,
+    scenario: null,
     version: 'draft',
   },
   {
@@ -152,6 +158,7 @@ export const courses: Course[] = [
     subtitle: '조건이 결과를 바꾸는 방식',
     description: '노광 조건이 패턴 결과에 어떻게 반영되는지 개념 수준에서 다룰 예정입니다.',
     availability: 'coming_soon',
+    exerciseType: 'alignment',
     estimatedMinutes: 30,
     objectives: [],
     prerequisites: [],
@@ -160,23 +167,72 @@ export const courses: Course[] = [
     rubric: [],
     alignment: null,
     control: null,
+    scenario: null,
     version: 'draft',
   },
   {
+    // 두 번째 실습 유형(judgment). 조작이 없고 읽고·순서 정하고·적는다.
+    // 시나리오·문구·권장 순서는 전부 이 안에 있다(컴포넌트에 쓰지 않는다).
     id: 'defect-report',
-    title: '공정 이상 상황 보고',
-    subtitle: '관측 사실과 해석의 구분',
-    description: '이상 상황을 보고할 때 사실과 추정을 어떻게 구분해 적는지 다룰 예정입니다.',
-    availability: 'coming_soon',
-    estimatedMinutes: 30,
-    objectives: [],
+    title: '공정 이상 상황 보고 — 무엇부터 확인할 것인가',
+    subtitle: '관측값을 읽고 확인할 순서를 정한다',
+    description:
+      '검사에서 발견된 상황과 관측값을 읽고, 무엇부터 확인할지 순서를 정해 제출합니다. ' +
+      '조작 장치는 쓰지 않습니다. 관찰한 것에서 무엇을 먼저 좁힐지 판단하는 연습입니다.',
+    availability: 'available',
+    exerciseType: 'judgment',
+    estimatedMinutes: 15,
+    objectives: [
+      '관측값이 가리키는 범위를 읽는다',
+      '확인할 항목의 순서를 근거를 들어 정한다',
+      '관련이 높은 항목을 앞쪽에 모은다',
+      '왜 그 순서로 확인하려는지 설명한다',
+    ],
     prerequisites: [],
-    steps: [],
+    steps: [
+      { id: 'concept', title: '상황 읽기', summary: '무슨 일이 있었는지와 관측값을 확인합니다.' },
+      { id: 'marks', title: '관측값 판독', summary: '관측값이 어느 범위를 가리키는지 읽습니다.' },
+      { id: 'align', title: '순서 정하기', summary: '확인 항목 5개의 순서를 정합니다.' },
+      { id: 'submit', title: '제출', summary: '왜 그 순서인지 적고 제출합니다.' },
+      {
+        id: 'feedback',
+        title: '피드백 확인',
+        summary: '권장 순서와 그 근거를 확인하고 필요하면 다시 연습합니다.',
+      },
+    ],
     orderOptions: [],
-    rubric: [],
+    rubric: [
+      { short: '관측 판독', text: '관측값이 가리키는 곳을 먼저 확인하려 했는가' },
+      { short: '확인 순서', text: '권장 절차와 가까운 순서로 배열했는가' },
+      { short: '범위 좁히기', text: '상위 항목에 관련 높은 것을 모았는가' },
+      { short: '설명·기록', text: '왜 그 순서로 확인하려는지 설명했는가' },
+    ],
     alignment: null,
     control: null,
-    version: 'draft',
+    scenario: {
+      situation:
+        '노광 후 검사에서 웨이퍼 가장자리 쪽 패턴이 흐리게 나왔습니다. 중심부는 정상입니다.',
+      observations: [
+        { label: '패턴 상태', value: '중심부 정상 · 가장자리 흐림' },
+        { label: '직전 로트', value: '이상 없음' },
+        { label: '레지스트 도포 두께', value: '기록상 정상 범위' },
+        { label: '평행도 점검 이력', value: '3일 전 수행' },
+        { label: '노광 시간', value: '설정값과 동일' },
+      ],
+      checkItems: [
+        { id: 'wedge', label: '마스크·웨이퍼 평행도(웨지) 점검' },
+        { id: 'focus', label: '노광 초점 설정 확인' },
+        { id: 'contam', label: '마스크 표면 오염 확인' },
+        { id: 'coat', label: '레지스트 도포 균일도 재확인' },
+        { id: 'history', label: '장비 정비 이력 조회' },
+      ],
+      recommendedOrder: ['wedge', 'focus', 'contam', 'coat', 'history'],
+      orderNote: '권장 순서는 이 교육 과정이 정한 기준이며 모든 현장의 정답이 아닙니다.',
+      rationale:
+        '가장자리만 흐리고 중심은 정상이라는 관측은 면 전체에 걸친 조건(평행도·초점)을 먼저 가리킵니다. ' +
+        '도포나 정비 이력은 관측이 그쪽을 가리킬 때 확인합니다.',
+    },
+    version: 'course-judgment-1.0.0',
   },
 ]
 

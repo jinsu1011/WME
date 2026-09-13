@@ -61,11 +61,37 @@ python3 -m venv .venv                      # 노트북마다 한 번
 - 키가 오면 `web/backend/.env` 에 `WME_LLM_API_KEY=...` 한 줄 넣고 서버만 다시 띄우면 된다
 - 키가 없으면 503 + 답변 보존 + 재시도 가능
 
-## 남은 일
+## 남은 일 (2026-09-13 밤 기준, 우선순위 순)
 
-- [ ] **LLM 실제 호출 1회 성공** — 이게 유일하게 "확인했다"고 말할 수 없는 부분이다
-- [ ] 수평(평행) 판정 허용 범위가 확정되면 `content_json` 에 추가
-- [ ] 회전 속도가 너무 빠르다는 보고가 오면 `content_json.control.yawGainDegPerDeg`(지금 2.5) 조정
+A·B·C(채점 데이터화 · exercise_type · judgment 유형)는 **끝났다.** 아래가 남은 것이다.
+
+### 1. ⚠️ judgment 기록의 `endedAt` 이 비어 있다 (FRONT 보고)
+server 모드로 만든 judgment 시도의 `endedAt` 이 null 이라 목록 일시가 "기록 없음"으로 뜬다.
+조작이 없는 유형이라 확정 시점을 언제로 잡을지 정해야 한다 → **제출 시점을 `endedAt` 으로 쓴다.**
+
+### 2. `scenario` 를 과정 응답 최상위로 (설계서 10.4)
+지금은 `content.scenario` 안에만 있다. `alignment`·`control` 처럼 최상위로 올린다.
+올라가면 FRONT 가 보정 코드를 지운다.
+
+### 3. 기준1 modifier 를 `adjust: -1` → `capAt: 1` 로 (설계서 10.1, HEADER 결정)
+`convergenceOrder = together` + 축 간섭일 때 0점이 되는데, 같은 현상을 두 번 깎는 것이다.
+**`content_json` 한 글자만 바꾼다. 코드는 건드리지 않는다.**
+바꾼 뒤 시드 12건 점수가 그대로인지 확인한다.
+
+### 4. LLM 실제 호출 1회 성공 ★ 키가 생기면 제일 먼저 ★
+키는 `web/backend/.env` 에 있고, 서버가 자동으로 읽지 않는다:
+
+```bash
+cd web/backend && source .env && ./.venv/bin/python -m uvicorn app.main:app --port 8000
+```
+
+- 제공자는 키 접두사로 자동 선택된다(`sk-ant-` → anthropic, `sk-proj-`/`sk-` → openai)
+- `GET /api/health` 의 `llmConfigured` 로 키가 들어갔는지 확인
+- **정렬 실습과 판단 실습 둘 다** 실제 호출해서 피드백이 나오는지 확인한다
+- 성공하면 `rubricSource` 가 `llm` 으로 바뀌고 `feedback.generatedBy` 가 `llm` 이 된다
+
+⚠️ **오류 메시지에 키가 실려 나가지 않는지 반드시 확인한다.** 한 번 샌 적이 있다.
+응답 본문과 `attempts.feedback_error` 둘 다 본다.
 
 **그 외에는 더 만들지 않는다.** 지금 서버는 잘 돌아간다.
 남은 시간에 기능을 늘리면 발견할 시간이 없는 문제만 생긴다.

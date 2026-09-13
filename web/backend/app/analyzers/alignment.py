@@ -1,4 +1,4 @@
-"""정렬 경로 분석 — 규칙 기반. 모델 학습을 하지 않는다.
+"""정렬 실습(alignment) 분석기 — 규칙 기반. 모델 학습을 하지 않는다.
 
 입력은 measurements 의 화면 웨이퍼 상태(wafer_x, wafer_y, wafer_theta) 시계열이고,
 출력은 events(보정 구간·과잉 보정 구간)와 attempts.summary_json 이다.
@@ -275,6 +275,62 @@ def convergence_pattern(samples: Sequence[Sample], tol: dict[str, float]) -> dic
     }
 
 
+# --- 채점기에 넘길 지표 ---------------------------------------------------
+# 허용 오차의 몇 %까지를 "여유 있다"로 볼지. 채점 기준값 자체는 과정 데이터에 있고,
+# 여기서는 그 판정에 필요한 불리언만 만든다.
+COMFORT_RATIO = 0.6
+OUT_OF_RANGE_RATIO = 2.5
+
+
+def scoring_metrics(last: Sample, tol: dict[str, float], events: Sequence[AnalyzedEvent],
+                    pattern: dict[str, Any], interference: Sequence[str]) -> dict[str, Any]:
+    """실습유형_설계.md 4절의 scoring_metrics.
+
+    답변에서 나오는 지표(answerLength, reportedOrderMismatch)는 제출 시점에
+    answer_metrics() 로 덮어쓴다. 여기서는 기본값을 넣어 모양을 맞춰 둔다.
+    """
+    pos_tol = tol.get("position_px", 4.0)
+    rot_tol = tol.get("rotation_deg", 1.0)
+    pos_err = _position_error(last)
+    rot_err = abs(last.theta)
+    return {
+        "finalPositionError": round(pos_err, 3),
+        "finalRotationError": round(rot_err, 3),
+        "overshootCount": sum(1 for e in events if e.type == "overshoot"),
+        "convergenceOrder": pattern.get("order", "unknown"),
+        "axisInterference": bool(interference),
+        "converged": pos_err <= pos_tol and rot_err <= rot_tol,
+        # 위치 기준 점수에 회전을 반영하기 위한 불리언(설계서 6절 "회전은 modifier")
+        "rotationOutsideComfort": rot_err > rot_tol * COMFORT_RATIO,
+        "rotationOutsideRange": rot_err > rot_tol * OUT_OF_RANGE_RATIO,
+        # 아래 둘은 제출 시점에 채워진다
+        "reportedOrderMismatch": False,
+        "answerLength": 0,
+    }
+
+
+# 분석이 내는 수렴 패턴 ↔ 학습자가 고르는 선택지의 id
+ORDER_FROM_PATTERN = {
+    "position_first": "xy-then-theta",
+    "rotation_first": "theta-then-xy",
+    "together": "interleaved",
+    "not_converged": "unknown",
+}
+
+
+def answer_metrics(summary: dict[str, Any], answer: dict[str, Any]) -> dict[str, Any]:
+    """제출된 답변에서 나오는 지표. 이 유형(정렬 실습)의 답변 형태를 아는 곳이다."""
+    observed = ORDER_FROM_PATTERN.get(
+        summary.get("path_analysis", {}).get("convergence", {}).get("order", ""), "unknown")
+    reported = answer.get("orderOptionId")
+    mismatch = bool(reported and reported != "other"
+                    and observed != "unknown" and reported != observed)
+    return {
+        "reportedOrderMismatch": mismatch,
+        "answerLength": len((answer.get("reason") or "").strip()),
+        "observedOrderOptionId": observed,
+    }
+
 # --- 4) 전체 분석 ---------------------------------------------------------
 
 def analyze(samples_in: Iterable[Any], tolerance: dict[str, float] | None = None,
@@ -327,6 +383,10 @@ def analyze(samples_in: Iterable[Any], tolerance: dict[str, float] | None = None
         "adjustment_count": sum(1 for e in events if e.type == "adjustment"),
         "overshoot_count": sum(1 for e in events if e.type == "overshoot"),
         "converged": converged,
+        # 채점기가 보는 유일한 입력(실습유형_설계.md 4절).
+        # 평평한 딕셔너리이고 값은 숫자·불리언·문자열만 쓴다.
+        # 채점기는 이 이름들만 알면 되고, 이 지표가 무엇을 뜻하는지는 몰라도 된다.
+        "scoring_metrics": scoring_metrics(last, tol, events, pattern, interference),
         # 규칙 기반 경로 분석 결과. AI 피드백의 근거로 그대로 넘긴다.
         "path_analysis": {
             "finalPositionError": round(_position_error(last), 3),
@@ -340,3 +400,27 @@ def analyze(samples_in: Iterable[Any], tolerance: dict[str, float] | None = None
         },
     }
     return AnalysisResult(summary=summary, events=events)
+
+
+# --- 유형 인터페이스 (analyzers/__init__.py 의 규격) ----------------------
+
+MEASURED = True          # 시계열 측정이 있는 유형이다
+
+
+def build_answer(course: dict, body: dict) -> dict:
+    """제출 본문을 검사해 answer 로 만든다. 형식이 틀리면 ValueError."""
+    option = body.get("orderOptionId")
+    if not option:
+        raise ValueError("조정 순서를 선택해야 합니다.")
+    valid = {o["id"] for o in course.get("content", {}).get("orderOptions", [])}
+    if valid and option not in valid:
+        raise ValueError(f"이 과정에 없는 조정 순서입니다: {option}")
+    return {"orderOptionId": option, "reason": body.get("reason", "")}
+
+
+def on_submit(course: dict, summary: dict | None, answer: dict,
+              duration_ms: int | None = None) -> dict:
+    """측정에서 만든 summary 에 답변에서 나오는 지표를 합친다."""
+    summary = dict(summary or {})
+    summary.setdefault("scoring_metrics", {}).update(answer_metrics(summary, answer))
+    return summary

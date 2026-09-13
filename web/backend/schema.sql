@@ -7,6 +7,7 @@
 --   events       : type 이 adjustment / overshoot / manual
 --   attempts     : summary_json 의 내용이 6절 지표로 교체 (컬럼 구조는 그대로)
 --   courses      : rubric_json 이 7절 루브릭 4개, content_json 에 허용 오차 설정값 추가
+--   courses      : exercise_type 추가 (실습유형_설계.md 3절)
 --   attempts     : rubric_source 추가 (규칙 기반 채점과 LLM 채점을 구분한다)
 --   attempts     : status 가 aligning / aligned / submitted / feedback_ready / feedback_failed
 --                  (이전 measuring / measured 를 정렬 실습 용어로 교체)
@@ -32,6 +33,9 @@ CREATE TABLE IF NOT EXISTS courses (
   subtitle          TEXT NOT NULL,
   description       TEXT NOT NULL,
   availability      TEXT NOT NULL CHECK (availability IN ('available','preview','coming_soon')),
+  -- 실습 유형(실습유형_설계.md 3절). 조작 화면·분석기·채점 규칙이 이 값으로 갈린다.
+  exercise_type     TEXT NOT NULL DEFAULT 'alignment'
+                      CHECK (exercise_type IN ('alignment','judgment')),
   estimated_minutes INTEGER NOT NULL,
   content_json      TEXT NOT NULL,
   rubric_json       TEXT NOT NULL,

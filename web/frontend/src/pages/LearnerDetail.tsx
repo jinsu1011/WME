@@ -108,6 +108,7 @@ function LearnerDetailView({ data }: { data: DetailData }) {
               <thead className="border-y border-slate-100 text-[11px] font-medium text-slate-400">
                 <tr>
                   <th className="px-5 py-3">시도</th>
+                  <th className="px-5 py-3">과정</th>
                   <th className="px-5 py-3">출처</th>
                   <th className="px-5 py-3">제출</th>
                   <th className="px-5 py-3 text-right">달성도</th>
@@ -127,6 +128,10 @@ function LearnerDetailView({ data }: { data: DetailData }) {
                         >
                           {a.attemptNo}차
                         </Link>
+                      </td>
+                      {/* 실습 유형이 둘 이상이므로 어느 과정의 기록인지 함께 보여준다 */}
+                      <td className="max-w-[210px] truncate px-5 py-3.5 text-slate-600">
+                        {data.courses.find((c) => c.id === a.courseId)?.title ?? a.courseId}
                       </td>
                       <td className="px-5 py-3.5">
                         <DataSourceBadge value={a.source} />

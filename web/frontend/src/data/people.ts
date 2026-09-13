@@ -129,6 +129,15 @@ export const seedEnrollments: Enrollment[] = learnerSeeds.flatMap((s): Enrollmen
     completedAt: null,
   },
   {
+    id: `e-${s.id}-judgment`,
+    userId: s.id,
+    courseId: 'defect-report',
+    // 새 실습 유형은 막 열렸다. 첫 학습자만 한 번 해 본 상태로 둔다.
+    status: s.id === 'u-1' ? 'in_progress' : 'not_started',
+    stepsCompleted: s.id === 'u-1' ? ['concept', 'marks', 'align', 'submit'] : [],
+    completedAt: null,
+  },
+  {
     id: `e-${s.id}-basics`,
     userId: s.id,
     courseId: 'photo-basics',

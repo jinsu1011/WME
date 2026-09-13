@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { fetchCourse, listAttempts, listCourses, listEnrollments } from '@/api'
 import type { Attempt, Course, Enrollment } from '@/types'
 import { Loaded } from '@/components/LoadState'
+import { WHY_HERE } from '@/data/copy'
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar } from '@/components/ui'
 import { useApi } from '@/lib/useApi'
 import { useDemo } from '@/lib/demo'
@@ -80,6 +81,14 @@ function Lobby({ data }: { data: LobbyData }) {
           <Card>
             <CardHeader title="어떤 연습인가요" />
             <p className="text-[13.5px] leading-relaxed text-slate-600">{course.description}</p>
+          </Card>
+
+          <Card>
+            <CardHeader title={WHY_HERE.title} />
+            <p className="text-[13.5px] leading-relaxed text-slate-600">{WHY_HERE.body}</p>
+            <p className="mt-2.5 rounded-lg bg-slate-50 px-3.5 py-2.5 text-[13px] font-medium leading-relaxed text-slate-700">
+              {WHY_HERE.limit}
+            </p>
           </Card>
 
           {course.steps.length > 0 && (
@@ -175,7 +184,7 @@ function Lobby({ data }: { data: LobbyData }) {
                   몇 번을 하든 이전 기록은 지워지지 않습니다. 편하게 다시 해도 됩니다.
                 </p>
                 <Link
-                  to="/attempts/new"
+                  to={`/attempts/new?courseId=${course.id}`}
                   className="mt-4 block rounded-lg bg-brand-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-brand-700"
                 >
                   {attempts.length > 0 ? '다시 연습 시작' : '연습 시작'}
@@ -261,7 +270,7 @@ function Lobby({ data }: { data: LobbyData }) {
       <div className="mt-4 lg:hidden">
         {isAvailable && (
           <Link
-            to="/attempts/new"
+            to={`/attempts/new?courseId=${course.id}`}
             className="block rounded-lg bg-brand-600 py-3 text-center text-sm font-semibold text-white"
           >
             연습 시작

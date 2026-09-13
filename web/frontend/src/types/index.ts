@@ -13,6 +13,14 @@ export interface User {
   department: string
 }
 
+/**
+ * 실습 유형 (기획/설계/실습유형_설계.md 3절).
+ * alignment = 마스크·웨이퍼 정렬(키보드/모형 컨트롤러 조작)
+ * judgment  = 상황 판단·확인 순서(조작 없음, 순서 배열 + 서술)
+ * 서버 응답에 없으면 alignment 로 본다(서버 기본값과 같다).
+ */
+export type ExerciseType = 'alignment' | 'judgment'
+
 /** 과정 공개 상태 — 카탈로그 배지와 실습 생성 가능 여부를 함께 결정한다. */
 export type Availability = 'available' | 'preview' | 'coming_soon'
 
@@ -83,12 +91,37 @@ export interface ControlSettings {
   keyboard: { movePxPerSec: number; rotateDegPerSec: number; fineFactor: number }
 }
 
+/** judgment 실습의 시나리오. 문구는 전부 과정 데이터 안에 있다. */
+export interface ScenarioObservation {
+  label: string
+  value: string
+}
+
+export interface ScenarioCheckItem {
+  id: string
+  label: string
+}
+
+export interface JudgmentScenario {
+  situation: string
+  observations: ScenarioObservation[]
+  checkItems: ScenarioCheckItem[]
+  /** 이 교육 과정이 정한 확인 순서. **제출 전에는 화면에 보여주지 않는다.** */
+  recommendedOrder: string[]
+  /** 권장 순서가 정답이 아니라는 표시. 결과 화면에 항상 함께 둔다. */
+  orderNote: string
+  /** 왜 그 순서인지. 제출 후에만 보여준다. */
+  rationale: string
+}
+
 export interface Course {
   id: string
   title: string
   subtitle: string
   description: string
   availability: Availability
+  /** 어떤 실습 화면을 쓸지 고른다. */
+  exerciseType: ExerciseType
   estimatedMinutes: number
   objectives: string[]
   prerequisites: string[]
@@ -101,6 +134,8 @@ export interface Course {
   alignment: AlignmentSettings | null
   /** 기울기 → 이동 변환 계수. 과정 설정값이며 서버가 준다. */
   control: ControlSettings | null
+  /** judgment 실습만 가진다. */
+  scenario: JudgmentScenario | null
   version: string
 }
 
@@ -176,8 +211,10 @@ export interface AlignmentEvent {
 }
 
 export interface Answer {
-  /** course.orderOptions 의 id. 어떤 순서로 조정했는지 */
-  orderOptionId: string
+  /** alignment — course.orderOptions 의 id. 어떤 순서로 조정했는지 */
+  orderOptionId?: string
+  /** judgment — 확인 순서. scenario.checkItems 의 id 를 빠짐없이 한 번씩 담는다 */
+  orderedIds?: string[]
   /** 왜 그 순서로 했는지 (루브릭 4번 '설명·기록'의 근거) */
   reason: string
   submittedAt: string
@@ -216,6 +253,31 @@ export interface AlignmentSummary {
   pathAnalysis?: Record<string, unknown>
 }
 
+/**
+ * judgment 실습의 결과 요약 (설계서 7.5).
+ * 채점기는 이 값들만 보므로 도메인 단어가 들어가지 않는다.
+ */
+export interface JudgmentSummary {
+  durationMs: number
+  /** 1순위로 놓은 항목이 권장 순서에서 몇 번째인가 (1부터) */
+  firstPickRank: number
+  /** 각 항목의 (학습자 위치 − 권장 위치) 절댓값 합. 0이면 완전 일치 */
+  orderDistance: number
+  /** 상위 3개가 권장 상위 3개와 겹치는 개수 (0~3) */
+  top3Overlap: number
+  answerLength: number
+  /** orderDistance <= 4 이면 참 */
+  passed: boolean
+}
+
+/** 시도 요약. 실습 유형에 따라 담기는 값이 다르다. */
+export type AttemptSummary = AlignmentSummary | JudgmentSummary
+
+/** 어느 유형의 요약인지 가른다. */
+export function isAlignmentSummary(summary: AttemptSummary | null): summary is AlignmentSummary {
+  return summary !== null && 'finalDx' in summary
+}
+
 /** 루브릭 항목별 달성 정도. 0=미충족, 1=부분, 2=충족. */
 export type RubricLevel = 0 | 1 | 2
 
@@ -242,7 +304,7 @@ export interface Attempt {
   /** 목록 응답에는 들어오지 않는다. 상세 조회에서만 채워진다. */
   samples: Sample[]
   events: AlignmentEvent[]
-  summary: AlignmentSummary | null
+  summary: AttemptSummary | null
   answer: Answer | null
   feedback: Feedback | null
   /** 피드백 생성 상태. 실패 시 화면에 다시 시도 버튼을 둔다. */

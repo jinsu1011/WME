@@ -29,6 +29,8 @@ export interface CreateAttemptInput {
   inputDevice: InputDevice
   /** mock 모드에서만 쓴다. server 모드는 실습 중 WS 로 보내고 서버가 계산한다. */
   startedAt?: string
+  /** 조작이 없는 실습(judgment)의 소요 시간. 화면이 잰 값이다. */
+  durationMs?: number
   samples?: Sample[]
   events?: AlignmentEvent[]
   phaseMarkers?: PhaseMarker[]

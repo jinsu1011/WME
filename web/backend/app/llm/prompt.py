@@ -14,7 +14,7 @@ SYSTEM_PROMPT = """당신은 반도체 장비 기술자 사내 교육 플랫폼�
 지켜야 할 규칙:
 - 제공된 교육 내용, 측정 기록, 학습자 답변만 사용한다. 없는 사실을 만들지 않는다.
 - 관측된 사실과 추정을 구분해 쓴다.
-- 등록된 근거 ID(EVENTS 목록에 있는 것)만 참조한다. ID 를 새로 지어내지 않는다.
+- 등록된 보정 구간 ID(EVENTS 목록에 있는 것)만 참조한다. ID 를 새로 지어내지 않는다.
 - 실제 설비의 고장 원인, 작업자의 숙련도나 현장 자격을 확정하지 않는다.
 - 허용 오차는 이 교육 과정의 설정값이다. 실제 장비의 정렬 정밀도로 말하지 않는다.
 - 이 실습은 실장비 실습을 대체하지 않는다. 투입 전 판단·절차 훈련이다.
@@ -67,7 +67,7 @@ def build_input(*, course: dict, summary: dict, events: list[dict], answer: dict
             "objectives": course["content"].get("objectives", []),
             "steps": [s["title"] for s in course["content"].get("steps", [])],
             "tolerance": tolerance,
-            "checkItems": course["content"].get("checkItems", []),
+            "orderOptions": course["content"].get("orderOptions", []),
         }),
         "",
         "## RUBRIC — 이 순서대로 rubricScores 를 매긴다 (0=미충족, 1=부분, 2=충족)",
@@ -77,14 +77,13 @@ def build_input(*, course: dict, summary: dict, events: list[dict], answer: dict
         "## OBSERVED — 기록에서 계산한 결과 (규칙 기반 분석, 학습 모델 아님)",
         _fmt(observed),
         "",
-        "## EVENTS — 참조 가능한 근거 구간. evidenceIds 에는 이 id 만 쓴다",
+        "## EVENTS — 참조 가능한 보정 구간. eventIds 에는 이 id 만 쓴다",
         _fmt(events_view),
         "",
-        "## LEARNER_ANSWER — 학습자가 고른 근거·점검 항목과 직접 쓴 이유",
+        "## LEARNER_ANSWER — 학습자가 고른 조정 순서와 직접 쓴 이유",
         ANSWER_OPEN,
         _fmt({
-            "선택한_근거ID": answer.get("evidenceIds", []),
-            "고른_점검항목": answer.get("checkItemId"),
+            "고른_조정순서": answer.get("orderOptionId"),
             "학습자가_쓴_이유": answer.get("reason", ""),
         }),
         ANSWER_CLOSE,

@@ -1,0 +1,55 @@
+# SENSOR 진행 기록
+
+목표: hardware/와 data/에 WME 펌웨어·안내·1분 기록/분석 도구를 작성하고 소프트웨어 검증을 마친다.
+
+- [x] 지정 문서와 기존 파일 확인: 인수인계 3.5단계, 실습 기준, 프론트 입력 타입을 읽음.
+- [x] 환경 확인: IDE 2.3.5에서 Arduino UNO /dev/cu.usbmodem1101 인식, AVR core 1.8.8 설치됨.
+- [x] hardware/README.md 작성 및 요구사항 대조: 조건부 배선표, IDE UNO/포트, 출력 규격, 모형 설명, 미측정·부호 표 포함.
+- [x] hardware/firmware/wme_sensor/wme_sensor.ino 작성·UNO 컴파일 통과: flash 8338/32256 bytes(25%), RAM 434/2048 bytes(21%).
+- [x] data/ 기록·분석 도구 검증 통과: 합성 경계값 ±1.00/±1.01°, 손상/짧은/중복/역행/끊긴 기록 거부, CLI, 가상 시리얼 저장·덮어쓰기 방지, 스케치 주석·규격 검사 등 테스트 7개 통과.
+- [x] Sensor.md 맨 위 구분선 아래 로그 추가, 변경 대상은 hardware/·data/ 지정 파일·Sensor.md만. 로그 끝 빈 줄을 정리하고 최종 diff 검사를 수행.
+
+현재 판단: UNO 5V 로직. 사진에서 MPU-6050 표시 확인. 5V VCC 입력 호환성은 모듈 사양 확인이 필요하다.
+핀헤더는 최초 사진에서 미장착; 사용자는 이후 핀헤더와 점퍼선 연결을 보고했으나 납땜·접촉은 검증하지 않음.
+USB 인식은 센서 I2C 통신 성공을 뜻하지 않는다. 실측·업로드는 이번 작업에 포함하지 않음.
+규격: WME,<t_ms>,<roll>,<pitch>,<yaw> LF, 115200 baud, 50Hz. 서버와 프론트는 수정하지 않음.
+결정: Wire.h만 사용하는 보드 코드, Python 표준 라이브러리로 macOS 수집 및 분석. 실제 CSV는 측정할 때만 생성.
+작성 예정 파일: hardware/README.md, hardware/firmware/wme_sensor/wme_sensor.ino, data/README.md,
+data/analyze_drift.py, data/capture_drift.py, 기획/작업로그/Sensor.md.
+현재 상태: README와 펌웨어·두 Python 도구 작성 완료. 실제 CSV는 만들지 않음.
+현재 작업 완료: 안내·펌웨어·기록/분석 도구·소프트웨어 검증·로그 작성 완료. 합성 검증은 /private/tmp에서 수행했으며 raw/에 실측 파일을 만들지 않았다.
+
+## 검증 근거
+
+- `arduino-cli compile --fqbn arduino:avr:uno --build-path /private/tmp/wme-uno-build <스케치 폴더>` 종료 코드 0.
+- `PYTHONDONTWRITEBYTECODE=1 python3 /private/tmp/test_wme_sensor.py` : 7 tests, OK.
+- 가상 시리얼 검증은 가짜 보드 시각을 빠르게 전송한 기능 검사다. 실시간 50Hz 계측이나 실제 센서 측정이 아니다.
+- 실물 포트에 접근하거나 기존 보드 프로그램을 교체하지 않음. 브라우저 FRONT 파일과 서버 파일을 변경하지 않음.
+- 실제 남은 일: 모듈의 5V 전원·신호 풀업 호환성과 접촉 확인 → 사용자 업로드 → WME 출력 확인 → 1분 드리프트·축 부호 실측 → HEADER 전달.
+
+## 후속 확인 — 실제 업로드 시도 실패 (2026-09-13)
+
+- 사용자 요청에 따라 Arduino Uno /dev/cu.usbmodem1101에 검증된 빌드 업로드를 실제 시도함.
+- arduino-cli upload 종료 코드 1: programmer is not responding / not in sync: resp=0x00. 쓰기·검증 단계 성공 없음.
+- lsof로 해당 포트는 업로드 avrdude만 점유한 것을 확인. IDE 시리얼 모니터는 열려 있지 않음.
+- 대안 확인: USB DTR/RTS 리셋 후 115200 baud에서 읽기 성격의 부트로더 동기화 요청. 응답 0바이트.
+- 현재 상태: USB 장치 인식은 되지만 ATmega328P 부트로더 응답은 확인되지 않음. MPU 연결 여부도 여전히 미확인.
+- 다음 단계: 물리적 USB 재연결/보드 리셋 후 다시 확인 필요. 부트로더 손상이나 센서 불량으로 단정하지 않음.
+
+## 최신 상태 — USB 재연결 후 업로드 성공, 센서 식별 실패 (2026-09-13)
+
+- [x] arduino-cli board list: Arduino UNO, /dev/cu.usbmodem1101 재인식.
+- [x] 같은 검증 빌드 업로드 재시도: 종료 코드 0, New upload port: /dev/cu.usbmodem1101.
+- [x] 실제 115200 baud 시리얼 8초 읽기: ERR,MPU6050_NOT_FOUND, 23바이트, WME 샘플 0개.
+- 결론: UNO에 WME 프로그램은 올라갔다. 0x68/0x69에서 예상 MPU6050 식별값 확인 실패. 배선/접촉/전압/모듈 중 원인 미확정.
+- 다음 단계: USB 전원 분리 후 센서 VCC/GND/A4-SDA/A5-SCL 및 무납땜 핀 접촉 확인. 정상 식별 후 드리프트 측정.
+- 실측 각도/드리프트 파일은 여전히 없음. 오류 메시지 수신과 센서값 수신 성공을 구분한다.
+
+## 최신 상태 — MPU6050 인식·실측 수신 성공 (2026-09-13)
+
+- [x] 사용자 재확인 요청 후 USB DTR/RTS 리셋, 115200 baud 수신.
+- [x] INFO,KEEP_STILL_CALIBRATING → INFO,READY → 정상 WME 샘플 169개 수신, 오류 메시지 없음.
+- [x] 수신 구간 t_ms 3067~6427, 3.360초, 평균 50.0Hz, 샘플 간격 19~21ms.
+- 실제 첫 샘플: WME,3067,-2.70,60.00,0.00. 마지막: WME,6427,-2.65,59.89,-0.01.
+- 이 짧은 기록은 1분 드리프트 측정이 아니다. pitch 약 60°이므로 정지 측정 전 모형 자세 확인 필요.
+- 다음 단계: 평평한 자세·고정 확인 후 30초 안정화 + 1분 드리프트 기록, 축 부호 별도 확인. raw CSV 미생성.

@@ -22,6 +22,7 @@ export const courses: Course[] = [
     orderOptions: [],
     rubric: [],
     alignment: null,
+    control: null,
     version: 'preview-0.1',
   },
   {
@@ -118,6 +119,15 @@ export const courses: Course[] = [
         'USB 케이블',
       ],
     },
+    control: {
+      deadZoneDeg: 2,
+      gainPxPerDeg: 12,
+      maxSpeedPx: 160,
+      yawDeadZoneDeg: 3,
+      yawGainDegPerDeg: 2.5,
+      maxSpeedDeg: 30,
+      keyboard: { movePxPerSec: 90, rotateDegPerSec: 22, fineFactor: 0.25 },
+    },
     version: 'course-2.0.0',
   },
   {
@@ -133,6 +143,7 @@ export const courses: Course[] = [
     orderOptions: [],
     rubric: [],
     alignment: null,
+    control: null,
     version: 'draft',
   },
   {
@@ -148,6 +159,7 @@ export const courses: Course[] = [
     orderOptions: [],
     rubric: [],
     alignment: null,
+    control: null,
     version: 'draft',
   },
   {
@@ -163,6 +175,7 @@ export const courses: Course[] = [
     orderOptions: [],
     rubric: [],
     alignment: null,
+    control: null,
     version: 'draft',
   },
 ]

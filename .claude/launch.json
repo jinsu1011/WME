@@ -4,8 +4,38 @@
     {
       "name": "wme-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web/frontend", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "web/frontend",
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "wme-api",
+      "runtimeExecutable": "web/backend/.venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--port",
+        "8000",
+        "--app-dir",
+        "web/backend"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "wme-web-server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "web/frontend",
+        "run",
+        "dev:server"
+      ],
+      "port": 5174
     }
   ]
 }

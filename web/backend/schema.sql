@@ -7,6 +7,9 @@
 --   events       : type 이 adjustment / overshoot / manual
 --   attempts     : summary_json 의 내용이 6절 지표로 교체 (컬럼 구조는 그대로)
 --   courses      : rubric_json 이 7절 루브릭 4개, content_json 에 허용 오차 설정값 추가
+--   attempts     : rubric_source 추가 (규칙 기반 채점과 LLM 채점을 구분한다)
+--   attempts     : status 가 aligning / aligned / submitted / feedback_ready / feedback_failed
+--                  (이전 measuring / measured 를 정렬 실습 용어로 교체)
 --
 -- 테이블 6개 구성은 그대로다.
 
@@ -59,8 +62,10 @@ CREATE TABLE IF NOT EXISTS attempts (
   -- 화면이 "키보드 조작 / 모형 컨트롤러"를 표시하기 위해 저장한다.
   input_device        TEXT NOT NULL DEFAULT 'keyboard'
                         CHECK (input_device IN ('keyboard','model_controller')),
+  -- 정렬 실습 기준 상태. aligning(정렬 중) → aligned(정렬 확정) → submitted(답변 제출)
+  --                        → feedback_ready / feedback_failed
   status              TEXT NOT NULL CHECK (status IN
-                        ('measuring','measured','submitted','feedback_ready','feedback_failed')),
+                        ('aligning','aligned','submitted','feedback_ready','feedback_failed')),
   started_at          TEXT NOT NULL,
   ended_at            TEXT,
   phase_markers_json  TEXT NOT NULL DEFAULT '[]',
@@ -72,6 +77,9 @@ CREATE TABLE IF NOT EXISTS attempts (
   feedback_error      TEXT,
   feedback_viewed_at  TEXT,
   rubric_scores_json  TEXT,
+  -- 루브릭 점수의 출처. rule = 규칙 기반 임시 채점, llm = 모델 채점.
+  -- 화면이 둘을 구분해 표시해야 한다. 규칙 채점을 AI 채점이라고 말하지 않는다.
+  rubric_source       TEXT CHECK (rubric_source IN ('rule','llm')),
   duration_sec        INTEGER NOT NULL DEFAULT 0,
   course_version      TEXT NOT NULL,
   model_version       TEXT NOT NULL,

@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Role, User } from '@/types'
-import { currentLearner, instructor } from '@/data/people'
 import { DEMO_ACCOUNTS } from '@/data/accounts'
+import { fetchUser } from '@/api'
 
 /**
  * 데모 로그인. 실제 인증 구현이 아니다.
@@ -12,7 +12,14 @@ import { DEMO_ACCOUNTS } from '@/data/accounts'
 interface DemoState {
   /** 로그인 전에는 null */
   role: Role | null
-  currentUser: User
+  /** 로그인한 사용자의 id. 화면의 모든 조회는 이 값으로 한다. */
+  userId: string
+  /**
+   * 이름·소속. **데이터 계층에서 읽는다.**
+   * 화면에 사람 정보를 따로 들고 있지 않는다(두 벌이 되면 서로 어긋난다).
+   * 불러오는 중에는 null 이다.
+   */
+  currentUser: User | null
   signedIn: boolean
   signIn: (id: string, password: string) => boolean
   signOut: () => void
@@ -27,13 +34,38 @@ function readSaved(): Role | null {
   return null
 }
 
+function userIdFor(role: Role | null): string {
+  return DEMO_ACCOUNTS.find((a) => a.role === role)?.userId ?? ''
+}
+
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role | null>(readSaved)
+  // 불러온 사용자와 그 id 를 함께 들고, id 가 바뀌면 렌더 중에 null 로 본다.
+  // (효과 안에서 곧바로 상태를 비우면 렌더가 한 번 더 돈다)
+  const [loaded, setLoaded] = useState<{ id: string; user: User | null }>({ id: '', user: null })
+  const userId = userIdFor(role)
+  const currentUser = loaded.id === userId ? loaded.user : null
 
   useEffect(() => {
     if (role) localStorage.setItem(STORAGE_KEY, role)
     else localStorage.removeItem(STORAGE_KEY)
   }, [role])
+
+  // 이름·소속은 항상 데이터 계층에서 읽는다. 화면에 사람 정보를 따로 두지 않는다.
+  useEffect(() => {
+    if (!userId) return
+    let alive = true
+    fetchUser(userId)
+      .then((u) => {
+        if (alive) setLoaded({ id: userId, user: u ?? null })
+      })
+      .catch(() => {
+        if (alive) setLoaded({ id: userId, user: null })
+      })
+    return () => {
+      alive = false
+    }
+  }, [userId])
 
   const signIn = useCallback((id: string, password: string) => {
     const found = DEMO_ACCOUNTS.find((a) => a.id === id.trim() && a.password === password)
@@ -47,12 +79,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const value = useMemo<DemoState>(
     () => ({
       role,
-      currentUser: role === 'instructor' ? instructor : currentLearner,
+      userId,
+      currentUser,
       signedIn: role !== null,
       signIn,
       signOut,
     }),
-    [role, signIn, signOut],
+    [role, userId, currentUser, signIn, signOut],
   )
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>

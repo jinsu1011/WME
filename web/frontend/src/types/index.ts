@@ -69,6 +69,20 @@ export interface AlignmentSettings {
   materials: string[]
 }
 
+/**
+ * 기울기 → 이동 변환 계수. 과정 설정값이며 서버가 준다.
+ * 화면·입력 어댑터에 숫자를 직접 적지 않고 이 값을 쓴다.
+ */
+export interface ControlSettings {
+  deadZoneDeg: number
+  gainPxPerDeg: number
+  maxSpeedPx: number
+  yawDeadZoneDeg: number
+  yawGainDegPerDeg: number
+  maxSpeedDeg: number
+  keyboard: { movePxPerSec: number; rotateDegPerSec: number; fineFactor: number }
+}
+
 export interface Course {
   id: string
   title: string
@@ -85,6 +99,8 @@ export interface Course {
   rubric: RubricCriterion[]
   /** 정렬 실습 과정만 가진다. 소개·준비 중 과정은 없다. */
   alignment: AlignmentSettings | null
+  /** 기울기 → 이동 변환 계수. 과정 설정값이며 서버가 준다. */
+  control: ControlSettings | null
   version: string
 }
 
@@ -103,12 +119,16 @@ export interface Enrollment {
 export type DataSource = 'mock' | 'replay' | 'live'
 
 /**
- * 무엇으로 웨이퍼 마크를 움직였는지. 화면에 항상 표시한다.
- * keyboard = 키보드 조작, controller = 센서를 붙인 교육용 모형 컨트롤러.
+ * 무엇으로 움직이는 마크를 조작했는지. 화면에 항상 표시한다.
+ * keyboard = 키보드 조작, model_controller = 센서를 붙인 교육용 모형 컨트롤러.
+ * 이름과 값은 서버 응답(`inputDevice`)과 1:1로 맞춘다.
  */
-export type InputSource = 'keyboard' | 'controller'
+export type InputDevice = 'keyboard' | 'model_controller'
 
 export type AttemptStatus = 'aligning' | 'aligned' | 'submitted' | 'feedback_ready' | 'feedback_failed'
+
+/** 피드백 생성 상태. 실패해도 제출한 답변은 보존된다. */
+export type FeedbackStatus = 'none' | 'pending' | 'ready' | 'failed'
 
 /** 실습 진행 상태 전환. 자동 인식 없이 화면 버튼으로만 기록한다. */
 export type PhaseName = 'idle' | 'aligning' | 'confirmed' | 'submitted'
@@ -129,10 +149,12 @@ export interface Sample {
   waferX: number
   waferY: number
   waferTheta: number
-  /** 마스크 마크 기준 남은 오차 */
+  /** 고정 마크 기준 남은 오차 */
   dx: number
   dy: number
   dTheta: number
+  /** 수신 품질. 서버가 준다. */
+  quality?: 'ok' | 'gap'
 }
 
 /** 보정 구간. 규칙 기반으로 계산하며 학습자가 고르는 값이 아니다. */
@@ -190,10 +212,18 @@ export interface AlignmentSummary {
   overshootCount: number
   /** 과정 설정값인 허용 오차 안에 들어왔는지 */
   converged: boolean
+  /** 서버의 규칙 기반 경로 분석 결과. 화면은 위 7개 값만 쓴다. */
+  pathAnalysis?: Record<string, unknown>
 }
 
 /** 루브릭 항목별 달성 정도. 0=미충족, 1=부분, 2=충족. */
 export type RubricLevel = 0 | 1 | 2
+
+/**
+ * 누가 채점했는지. 화면에 반드시 구분해서 표시한다.
+ * rule = 규칙 기반 임시 채점(AI 미연결), llm = 실제 모델 채점.
+ */
+export type RubricSource = 'rule' | 'llm'
 
 export interface Attempt {
   id: string
@@ -204,19 +234,28 @@ export interface Attempt {
   /** 시연용 예시 기록인지 실제 조작 기록인지 */
   source: DataSource
   /** 무엇으로 조작했는지 */
-  inputSource: InputSource
+  inputDevice: InputDevice
   status: AttemptStatus
   startedAt: string
   endedAt: string | null
   phaseMarkers: PhaseMarker[]
+  /** 목록 응답에는 들어오지 않는다. 상세 조회에서만 채워진다. */
   samples: Sample[]
   events: AlignmentEvent[]
   summary: AlignmentSummary | null
   answer: Answer | null
   feedback: Feedback | null
+  /** 피드백 생성 상태. 실패 시 화면에 다시 시도 버튼을 둔다. */
+  feedbackStatus: FeedbackStatus
+  /** 생성 실패 이유. 답변은 보존된다. */
+  feedbackError: string | null
   feedbackViewedAt: string | null
   /** course.rubric 과 같은 순서. 미제출 시도는 null. */
   rubricScores: RubricLevel[] | null
+  /** 규칙 기반인지 모델 채점인지. 채점 전이면 null. */
+  rubricSource: RubricSource | null
+  /** 기준별 채점 이유. 규칙 기반 채점일 때만 온다. course.rubric 과 같은 순서. */
+  rubricReasons: string[] | null
   /** 실습에 사용한 시간(초). 학습 활동량 집계에만 쓴다. */
   durationSec: number
   /** 재현성을 위해 시도 시점의 버전을 고정 저장한다. */

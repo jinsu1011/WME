@@ -124,12 +124,12 @@ function TopBar({ items }: { items: NavItem[] }) {
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
             <div className="text-[13px] font-medium text-slate-800">
-              {currentUser.displayName}
+              {currentUser ? currentUser.displayName : <span className="text-slate-300">…</span>}
               <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
                 {role ? roleLabel(role) : ''}
               </span>
             </div>
-            <div className="text-[11px] text-slate-400">{currentUser.department}</div>
+            <div className="text-[11px] text-slate-400">{currentUser?.department ?? ''}</div>
           </div>
           <button
             type="button"

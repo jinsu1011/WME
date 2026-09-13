@@ -1,15 +1,20 @@
 import { Link } from 'react-router-dom'
 import { listCourses, listEnrollments } from '@/api'
+import type { Course, Enrollment } from '@/types'
 import { tenant } from '@/data/tenant'
 import { AvailabilityBadge } from '@/components/Badge'
+import { ApiModeBadge, Loaded } from '@/components/LoadState'
 import { Card, PageHeader, ProgressBar } from '@/components/ui'
 import { courseProgressPct } from '@/lib/stats'
+import { useApi } from '@/lib/useApi'
 import { useDemo } from '@/lib/demo'
 
 export function Catalog() {
-  const { currentUser } = useDemo()
-  const courses = listCourses()
-  const enrollments = listEnrollments(currentUser.id)
+  const { userId } = useDemo()
+  const state = useApi(
+    () => Promise.all([listCourses(), listEnrollments(userId)]),
+    [userId],
+  )
 
   return (
     <>
@@ -17,8 +22,18 @@ export function Catalog() {
         eyebrow={`${tenant.companyName} · ${tenant.programTitle}`}
         title="과정"
         description="배정된 과정과 앞으로 열릴 과정입니다. 과정을 누르면 대기방으로 들어갑니다."
+        actions={<ApiModeBadge />}
       />
+      <Loaded state={state} label="과정 목록을 불러오는 중입니다">
+        {([courses, enrollments]) => <CatalogList courses={courses} enrollments={enrollments} />}
+      </Loaded>
+    </>
+  )
+}
 
+function CatalogList({ courses, enrollments }: { courses: Course[]; enrollments: Enrollment[] }) {
+  return (
+    <>
       <div className="grid gap-4 sm:grid-cols-2">
         {courses.map((course) => {
           const enrollment = enrollments.find((e) => e.courseId === course.id)

@@ -1,7 +1,11 @@
 import type { ControllerSource, ControllerVelocity } from './types'
 import { ZERO_VELOCITY } from './types'
 
-/** 키를 얼마나 빠르게 움직임으로 바꿀지. 화면 px/초, 도/초. */
+/**
+ * 키를 얼마나 빠르게 움직임으로 바꿀지. 화면 px/초, 도/초.
+ * **숫자를 여기 적어두고 쓰지 않는다.** 과정 설정값(`course.control.keyboard`)을 받아서 쓴다.
+ * 아래 기본값은 서버를 못 불러왔을 때를 위한 최후 수단이다.
+ */
 export interface KeyboardSpeed {
   move: number
   rotate: number
@@ -10,6 +14,19 @@ export interface KeyboardSpeed {
 }
 
 const DEFAULT_SPEED: KeyboardSpeed = { move: 90, rotate: 22, fineFactor: 0.25 }
+
+/** 과정 설정값(서버 응답)을 이 어댑터의 속도로 바꾼다. */
+export function speedFromControl(keyboard: {
+  movePxPerSec: number
+  rotateDegPerSec: number
+  fineFactor: number
+}): KeyboardSpeed {
+  return {
+    move: keyboard.movePxPerSec,
+    rotate: keyboard.rotateDegPerSec,
+    fineFactor: keyboard.fineFactor,
+  }
+}
 
 /**
  * 지금 쓰는 컨트롤러. 방향키로 X/Y, Q/E 로 회전.

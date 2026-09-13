@@ -3,6 +3,9 @@ import { IMPLEMENTED_COURSE_ID } from '@/data/courses'
 import { AchievementPanels } from '@/components/Achievement'
 import { ActivityBars, MinutesTrend } from '@/charts/Charts'
 import { Card, CardHeader, DemoDataNote, EmptyState, PageHeader, StatTile } from '@/components/ui'
+import type { Attempt, Course, LearnerStats } from '@/types'
+import { ApiModeBadge, Loaded } from '@/components/LoadState'
+import { useApi } from '@/lib/useApi'
 import { useDemo } from '@/lib/demo'
 import {
   attemptScorePct,
@@ -17,12 +20,42 @@ import {
  * 현재 상황 — 얼마나 연습했고(진도·시간), 기준을 얼마나 충족했는지(정확도)를 나눠서 보여준다.
  * 두 값을 한 숫자로 합치지 않는다.
  */
+interface StatusData {
+  stats: LearnerStats
+  attempts: Attempt[]
+  course: Course
+  cohort: number[] | null
+}
+
 export function Status() {
-  const { currentUser } = useDemo()
-  const stats = statsFor(currentUser.id)!
-  const attempts = listAttempts(currentUser.id)
-  const course = fetchCourse(IMPLEMENTED_COURSE_ID)!
-  const cohort = cohortRubricPct(allLearnerStats())
+  const { userId } = useDemo()
+  const state = useApi<StatusData>(async () => {
+    const [stats, attempts, course, all] = await Promise.all([
+      statsFor(userId),
+      listAttempts(userId),
+      fetchCourse(IMPLEMENTED_COURSE_ID),
+      allLearnerStats(),
+    ])
+    if (!stats || !course) throw new Error('학습 기록을 불러오지 못했습니다.')
+    return { stats, attempts, course, cohort: cohortRubricPct(all) }
+  }, [userId])
+
+  return (
+    <>
+      <PageHeader
+        title="현재 상황"
+        description="저장된 연습 기록에서 바로 계산한 값입니다. 점수를 매기기 위한 화면이 아니라 변화를 보기 위한 화면입니다."
+        actions={<ApiModeBadge />}
+      />
+      <Loaded state={state} label="학습 기록을 불러오는 중입니다">
+        {(data) => <StatusView data={data} />}
+      </Loaded>
+    </>
+  )
+}
+
+function StatusView({ data }: { data: StatusData }) {
+  const { stats, attempts, course, cohort } = data
   const activity = weeklyActivity(attempts)
   const minutes = practiceTimeTrend(attempts)
 
@@ -33,11 +66,6 @@ export function Status() {
 
   return (
     <>
-      <PageHeader
-        title="현재 상황"
-        description="저장된 연습 기록에서 바로 계산한 값입니다. 점수를 매기기 위한 화면이 아니라 변화를 보기 위한 화면입니다."
-      />
-
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="누적 연습" value={stats.attemptCount} unit="회" sub={`제출 ${stats.submittedCount}건`} />
         <StatTile label="누적 연습 시간" value={totalMinutes} unit="분" sub={relativeDay(stats.lastActiveAt)} />

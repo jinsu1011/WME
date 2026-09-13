@@ -1,6 +1,9 @@
 import { Link, useParams } from 'react-router-dom'
-import { fetchCourse, listAttempts, listEnrollments } from '@/api'
+import { fetchCourse, listAttempts, listCourses, listEnrollments } from '@/api'
+import type { Attempt, Course, Enrollment } from '@/types'
+import { Loaded } from '@/components/LoadState'
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar } from '@/components/ui'
+import { useApi } from '@/lib/useApi'
 import { useDemo } from '@/lib/demo'
 import { attemptScorePct, courseProgressPct, relativeDay } from '@/lib/stats'
 
@@ -8,17 +11,52 @@ import { attemptScorePct, courseProgressPct, relativeDay } from '@/lib/stats'
  * 대기방 — 연습을 시작하기 전에 진행 방법과 확인 기준을 먼저 읽는 화면.
  * '연습 시작'을 눌러야 실습 화면으로 들어간다.
  */
+interface LobbyData {
+  course: Course
+  enrollment: Enrollment | undefined
+  attempts: Attempt[]
+  /** 선수 과정 제목을 찾기 위한 목록 */
+  courses: Course[]
+}
+
 export function CourseDetail() {
   const { courseId } = useParams()
-  const { currentUser } = useDemo()
-  const course = courseId ? fetchCourse(courseId) : undefined
+  const { userId } = useDemo()
+  const state = useApi<LobbyData | null>(async () => {
+    if (!courseId) return null
+    const [course, enrollments, attempts, courses] = await Promise.all([
+      fetchCourse(courseId),
+      listEnrollments(userId),
+      listAttempts(userId),
+      listCourses(),
+    ])
+    if (!course) return null
+    return {
+      course,
+      enrollment: enrollments.find((e) => e.courseId === course.id),
+      attempts: attempts.filter((a) => a.courseId === course.id),
+      courses,
+    }
+  }, [courseId, userId])
 
-  if (!course) {
-    return <EmptyState title="존재하지 않는 과정입니다" description="실습 목록에서 다시 선택해 주세요." />
-  }
+  return (
+    <Loaded state={state} label="대기방을 준비하는 중입니다">
+      {(data) =>
+        data ? (
+          <Lobby data={data} />
+        ) : (
+          <EmptyState
+            title="존재하지 않는 과정입니다"
+            description="실습 목록에서 다시 선택해 주세요."
+          />
+        )
+      }
+    </Loaded>
+  )
+}
 
-  const enrollment = listEnrollments(currentUser.id).find((e) => e.courseId === course.id)
-  const attempts = listAttempts(currentUser.id).filter((a) => a.courseId === course.id)
+function Lobby({ data }: { data: LobbyData }) {
+  const { course, enrollment, attempts } = data
   const pct = enrollment ? courseProgressPct(enrollment, course) : 0
   const isAvailable = course.availability === 'available'
   const lastScored = attempts.find((a) => a.rubricScores)
@@ -205,7 +243,7 @@ export function CourseDetail() {
               <CardHeader title="먼저 보면 좋은 과정" />
               <ul className="space-y-1.5">
                 {course.prerequisites.map((p) => {
-                  const pre = fetchCourse(p)
+                  const pre = data.courses.find((c) => c.id === p)
                   return (
                     <li key={p} className="text-[13px]">
                       <Link to={`/courses/${p}`} className="text-slate-600 hover:text-brand-700">

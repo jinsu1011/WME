@@ -1,6 +1,6 @@
 # WME (We Make Experts) — 프로젝트 헤드 문서
 
-> 이 파일이 프로젝트의 기준점이다. 세부 기획 근거는 `기획/SEMI_ON_PROJECT_PLAN.md`, 이어받기는 `이어서작업.md`, 세션별 규칙은 `기획/세션/` 을 따른다.
+> 이 파일이 프로젝트의 기준점이다. 세부 기획 근거는 `기획/SEMI_ON_PROJECT_PLAN.md`, 이어받기는 `이어서작업.md`, 세션별 규칙은 `기획/프롬프트/` 을 따른다.
 > 최종 수정: 2026-09-12 (서비스명 WME 확정, 로그인 + 실습 목록/대기방 흐름, FE 화면 11개)
 
 > **다른 노트북에서 이어받거나 새 대화를 시작한다면 `이어서작업.md` 를 먼저 연다.**
@@ -119,24 +119,24 @@ AI 2가 센서 없이 가능한 이유: LLM에 넣는 입력이 센서 원본이
 ├── 기획/
 │   ├── SEMI_ON_PROJECT_PLAN.md  # 전체 계획서
 │   ├── PROGRESS.md              # 완료·진행 중·다음 작업
-│   ├── 세션/                    # 세션별 프롬프트 (HEADER/FRONT/BACK/SENSOR)
-│   ├── 설계/                    # 화면설계 · API명세서 · DB설계 (제출물 원본)
-│   └── 이전기록/                # 초기 아이디어·이전 진행 기록
+│   ├── 프롬프트/                # 이어서 할 프롬프트 (HEADER/FRONT/BACK/SENSOR)
+│   ├── 작업로그/                # 역할별 작업 로그
+│   ├── 설계/                    # 실습과정 · DB설계 · API명세서 · 화면설계 (제출물 원본)
+│   └── 이전기록/                # 최초 기획서 원본
 │
 ├── web/
-│   ├── frontend/                # React 화면 (구현 중)
-│   ├── backend/                 # FastAPI·센서 수신·AI 연결 (미착수)
+│   ├── frontend/                # React 화면 11개
+│   ├── backend/                 # FastAPI · SQLite · LLM 피드백
 │   └── README.md                # 설치·실행 방법
 │
 ├── hardware/
-│   ├── firmware/                # Arduino 코드 (미착수)
+│   ├── firmware/                # Arduino 스케치 (wme_sensor)
 │   └── README.md                # 부품·배선·센서 부착 설명
 │
 ├── data/
-│   ├── raw/                     # 원본 센서 기록 (train_normal / validation / test)
+│   ├── raw/                     # 센서 측정 기록 (드리프트 측정 등)
 │   ├── demo/                    # 발표용 재생 데이터
-│   ├── models/                  # 학습 모델·설정·버전 정보
-│   └── local/                   # 개발용 SQLite DB
+│   └── local/                   # SQLite DB (wme.db)
 │
 └── 제출/                        # 제출물 + 체크리스트.md
 ```
@@ -189,7 +189,7 @@ npm --prefix web/frontend run dev
 ## 5.2 세션(AI) 역할 분담
 
 여러 대화를 쓰되 **대화끼리는 기억을 공유하지 않는다.** 그래서 담당 폴더를 겹치지 않게 나눈다.
-상세 규칙과 프롬프트는 `기획/세션/` 에 있다.
+상세 규칙과 프롬프트는 `기획/프롬프트/` 에 있다.
 
 | 세션 | 담당 | 쓰기 가능 폴더 |
 |---|---|---|

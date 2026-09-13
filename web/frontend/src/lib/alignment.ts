@@ -104,3 +104,16 @@ export function countAdjustments(samples: Sample[]): number {
   }
   return count
 }
+
+/**
+ * 그림에 쓸 만큼만 남기고 솎아낸다. 기록 자체는 줄이지 않는다(저장·분석은 원본으로 한다).
+ * 점이 수천 개가 되면 매번 다시 그리는 비용이 커진다.
+ */
+export function thinForDraw<T>(list: T[], max = 300): T[] {
+  if (list.length <= max) return list
+  const step = list.length / max
+  const out = Array.from({ length: max }, (_, i) => list[Math.floor(i * step)]!)
+  // 마지막 점(현재 위치)은 반드시 남긴다.
+  out[out.length - 1] = list[list.length - 1]!
+  return out
+}

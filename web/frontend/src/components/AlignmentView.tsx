@@ -1,6 +1,6 @@
 import type { AlignmentSettings, Sample } from '@/types'
 import { viz } from '@/charts/theme'
-import { positionError } from '@/lib/alignment'
+import { positionError, thinForDraw } from '@/lib/alignment'
 
 const SIZE = 320
 const C = SIZE / 2
@@ -32,7 +32,9 @@ export function AlignmentView({
   const movingColor = within ? viz.good : viz.series1
   const trailPath =
     trail && trail.length > 1
-      ? trail.map((s, i) => `${i === 0 ? 'M' : 'L'} ${C + s.dx} ${C + s.dy}`).join(' ')
+      ? thinForDraw(trail)
+          .map((s, i) => `${i === 0 ? 'M' : 'L'} ${(C + s.dx).toFixed(1)} ${(C + s.dy).toFixed(1)}`)
+          .join(' ')
       : null
 
   return (

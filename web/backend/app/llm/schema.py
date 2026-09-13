@@ -10,14 +10,14 @@ from typing import Any, Iterable
 # 모델에게 주는 출력 형식(프롬프트에 그대로 들어간다)
 OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "required": ["good", "improve", "evidenceIds", "nextStep", "cannotJudge", "rubricScores"],
+    "required": ["good", "improve", "eventIds", "nextStep", "cannotJudge", "rubricScores"],
     "additionalProperties": False,
     "properties": {
         "good": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 4,
                  "description": "잘한 점. 기록에서 확인되는 사실에만 근거한다."},
         "improve": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 4,
                     "description": "보완할 점."},
-        "evidenceIds": {"type": "array", "items": {"type": "string"}, "maxItems": 6,
+        "eventIds": {"type": "array", "items": {"type": "string"}, "maxItems": 6,
                         "description": "참조한 이벤트 ID. 제공된 목록에 있는 것만 쓴다."},
         "nextStep": {"type": "string", "description": "다음 학습 제안 한 문장."},
         "cannotJudge": {"type": "array", "items": {"type": "string"}, "maxItems": 4,
@@ -43,7 +43,7 @@ def validate_feedback(raw: Any, *, allowed_event_ids: Iterable[str],
     """모델 응답을 검증한다.
 
     - 구조가 스키마와 맞는가
-    - evidenceIds 가 그 attempt 에 실제로 있는 이벤트인가
+    - eventIds 가 그 attempt 에 실제로 있는 이벤트인가
     - rubricScores 길이가 루브릭 개수와 같고 값이 0·1·2 인가
     하나라도 어긋나면 ok=False 이고 호출한 쪽은 저장하지 않는다.
     """
@@ -86,17 +86,17 @@ def validate_feedback(raw: Any, *, allowed_event_ids: Iterable[str],
     else:
         out["nextStep"] = next_step.strip()
 
-    ev = raw["evidenceIds"]
+    ev = raw["eventIds"]
     if not isinstance(ev, list) or not all(isinstance(x, str) for x in ev):
-        errors.append("evidenceIds 는 문자열 배열이어야 합니다.")
+        errors.append("eventIds 는 문자열 배열이어야 합니다.")
     else:
         unknown_ids = [x for x in ev if x not in allowed]
         if unknown_ids:
             # 이 attempt 에 없는 ID 를 지어낸 경우다. 고쳐서 저장하지 않고 실패시킨다.
             errors.append(f"이 시도에 없는 근거 ID 를 참조했습니다: {unknown_ids}")
-        if len(ev) > OUTPUT_SCHEMA["properties"]["evidenceIds"]["maxItems"]:
-            errors.append("evidenceIds 가 너무 많습니다.")
-        out["evidenceIds"] = list(dict.fromkeys(ev))
+        if len(ev) > OUTPUT_SCHEMA["properties"]["eventIds"]["maxItems"]:
+            errors.append("eventIds 가 너무 많습니다.")
+        out["eventIds"] = list(dict.fromkeys(ev))
 
     scores = raw["rubricScores"]
     if not isinstance(scores, list):

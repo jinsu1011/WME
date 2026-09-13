@@ -1,8 +1,11 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { fetchAttempt, fetchCourse, fetchUser, listAttempts } from '@/api'
-import { Badge, InputSourceBadge } from '@/components/Badge'
+import { fetchAttempt, fetchCourse, fetchUser, listAttempts, requestFeedback } from '@/api'
+import type { Attempt, Course, User } from '@/types'
+import { Badge, InputDeviceBadge } from '@/components/Badge'
+import { Loaded } from '@/components/LoadState'
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar } from '@/components/ui'
+import { useApi } from '@/lib/useApi'
 import { AlignmentView } from '@/components/AlignmentView'
 import { ErrorTrend } from '@/charts/Charts'
 import { scoreBand } from '@/charts/theme'
@@ -12,21 +15,55 @@ import { ORDER_LABEL } from '@/lib/scoring'
 
 const LEVEL_LABEL = ['미충족', '부분 충족', '충족']
 
+interface ResultData {
+  attempt: Attempt
+  course: Course
+  user: User
+  siblings: Attempt[]
+}
+
 export function Result() {
   const { attemptId } = useParams()
-  const attempt = attemptId ? fetchAttempt(attemptId) : undefined
+  const state = useApi<ResultData | null>(async () => {
+    if (!attemptId) return null
+    const attempt = await fetchAttempt(attemptId, true)
+    if (!attempt) return null
+    const [course, user, mine] = await Promise.all([
+      fetchCourse(attempt.courseId),
+      fetchUser(attempt.userId),
+      listAttempts(attempt.userId),
+    ])
+    if (!course || !user) return null
+    return {
+      attempt,
+      course,
+      user,
+      siblings: mine.filter((a) => a.courseId === attempt.courseId),
+    }
+  }, [attemptId])
 
-  if (!attempt) {
-    return <EmptyState title="존재하지 않는 실습 기록입니다" description="기록 목록에서 다시 선택해 주세요." />
-  }
+  return (
+    <Loaded state={state} label="연습 결과를 불러오는 중입니다">
+      {(data) =>
+        data ? (
+          <ResultView data={data} onChanged={state.reload} />
+        ) : (
+          <EmptyState
+            title="존재하지 않는 실습 기록입니다"
+            description="기록 목록에서 다시 선택해 주세요."
+          />
+        )
+      }
+    </Loaded>
+  )
+}
 
-  const course = fetchCourse(attempt.courseId)!
-  const user = fetchUser(attempt.userId)!
+function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => void }) {
+  const { attempt, course, user, siblings } = data
   const settings = course.alignment
   const summary = attempt.summary
   const pct = attemptScorePct(attempt)
   const band = pct !== null ? scoreBand(pct) : null
-  const siblings = listAttempts(attempt.userId).filter((a) => a.courseId === attempt.courseId)
   const chosenOrder = course.orderOptions.find((o) => o.id === attempt.answer?.orderOptionId)
 
   const trend = attempt.samples.map((s) => ({
@@ -43,7 +80,7 @@ export function Result() {
         actions={
           <div className="flex items-center gap-2">
             {attempt.source === 'mock' && <Badge tone="warn">예시 데이터</Badge>}
-            <InputSourceBadge value={attempt.inputSource} />
+            <InputDeviceBadge value={attempt.inputDevice} />
             <Link
               to="/attempts/new"
               className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
@@ -173,45 +210,47 @@ export function Result() {
             )}
           </Card>
 
-          <Card>
-            <CardHeader
-              title="학습 피드백"
-              subtitle="기록된 궤적과 제출 답변만 근거로 만듭니다"
-              aside={
-                attempt.feedback?.generatedBy === 'mock' ? (
-                  <Badge tone="warn">AI 미연결 · 규칙 기반 샘플</Badge>
-                ) : (
-                  <Badge tone="ok">AI 생성</Badge>
-                )
-              }
-            />
-            {attempt.feedback ? (
-              <div className="space-y-4">
-                <FeedbackBlock title="잘 한 부분" tone="ok" items={attempt.feedback.good} />
-                <FeedbackBlock title="보완할 부분" tone="warn" items={attempt.feedback.improve} />
-                <FeedbackBlock title="다음 연습 제안" tone="brand" items={[attempt.feedback.nextStep]} />
-                <FeedbackBlock
-                  title="이 기록으로 판단할 수 없는 것"
-                  tone="muted"
-                  items={attempt.feedback.cannotJudge}
-                />
-              </div>
-            ) : (
-              <EmptyState
-                title="피드백이 아직 없습니다"
-                description="답변을 제출하면 피드백을 만듭니다. 만들기에 실패해도 제출한 답변은 보존됩니다."
-              />
-            )}
-          </Card>
+          <FeedbackCard attempt={attempt} onChanged={onChanged} />
         </div>
 
         <div className="space-y-4">
+          {!attempt.rubricScores && attempt.answer && (
+            <Card className="border-dashed">
+              <CardHeader
+                title="기준별 확인 결과"
+                subtitle="과정에 등록된 4개 기준"
+                aside={<Badge tone="warn">채점 전</Badge>}
+              />
+              <p className="text-[12.5px] leading-relaxed text-slate-500">
+                이 연습은 아직 기준별로 채점되지 않았습니다. 채점은 학습 피드백을 만들 때 함께
+                이루어집니다. 제출한 답변과 연습 기록은 그대로 저장되어 있습니다.
+              </p>
+              <ul className="mt-3 space-y-1.5">
+                {course.rubric.map((r) => (
+                  <li key={r.short} className="flex gap-2.5 text-[11.5px] leading-relaxed text-slate-500">
+                    <span className="w-16 shrink-0 font-semibold text-slate-600">{r.short}</span>
+                    <span>{r.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           {attempt.rubricScores && (
             <Card>
               <CardHeader title="기준별 확인 결과" subtitle="과정에 등록된 4개 기준" />
+              {/* 누가 채점했는지 한 줄로 분명히 밝힌다 */}
+              <div className="-mt-2 mb-3.5">
+                {attempt.rubricSource === 'llm' ? (
+                  <Badge tone="ok">AI 채점</Badge>
+                ) : (
+                  <Badge tone="warn">규칙 기반 임시 채점 · AI 미연결</Badge>
+                )}
+              </div>
               <div className="space-y-3">
                 {course.rubric.map((r, i) => {
                   const level = attempt.rubricScores![i] ?? 0
+                  const why = attempt.rubricReasons?.[i]
                   return (
                     <div key={r.short}>
                       <div className="mb-1 flex items-center justify-between gap-2">
@@ -219,32 +258,56 @@ export function Result() {
                         <span className="text-[11px] text-slate-400">{LEVEL_LABEL[level]}</span>
                       </div>
                       <ProgressBar value={level * 50} showLabel={false} />
-                      <p className="mt-1 text-[10.5px] leading-relaxed text-slate-400">{r.text}</p>
+                      {/* 규칙 채점일 때는 서버가 준 판단 근거를, 없으면 기준 문장을 보여준다 */}
+                      <p className="mt-1 text-[10.5px] leading-relaxed text-slate-500">
+                        {why ?? r.text}
+                      </p>
                     </div>
                   )
                 })}
               </div>
+              {attempt.rubricSource !== 'llm' && (
+                <p className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-400">
+                  이 점수는 기록에서 계산한 규칙 기반 임시 채점입니다. 모델이 연결되면 같은 기준으로
+                  다시 채점하며, 그때 이 표시가 'AI 채점'으로 바뀝니다.
+                </p>
+              )}
             </Card>
           )}
 
           {attempt.events.length > 0 && (
             <Card>
-              <CardHeader title="과잉 보정 구간" subtitle="규칙으로 계산한 구간입니다" />
+              <CardHeader
+                title="과잉 보정 구간"
+                subtitle={`규칙으로 계산한 구간 ${attempt.events.length}개 중 긴 순서로 ${Math.min(
+                  8,
+                  attempt.events.length,
+                )}개`}
+              />
               <ul className="space-y-1.5">
-                {attempt.events.map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-[12px]"
-                  >
-                    <span className="text-slate-600">
-                      {(e.startMs / 1000).toFixed(1)}~{(e.endMs / 1000).toFixed(1)}초
-                    </span>
-                    <span className="font-medium text-slate-700">
-                      {e.axis === 'xy' ? '위치' : '회전'}
-                    </span>
-                  </li>
-                ))}
+                {[...attempt.events]
+                  .sort((a, b) => b.endMs - b.startMs - (a.endMs - a.startMs))
+                  .slice(0, 8)
+                  .map((e) => (
+                    <li
+                      key={e.id}
+                      className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-[12px]"
+                    >
+                      <span className="text-slate-600">
+                        {(e.startMs / 1000).toFixed(1)}~{(e.endMs / 1000).toFixed(1)}초
+                      </span>
+                      <span className="font-medium text-slate-700">
+                        {e.axis === 'xy' ? '위치' : '회전'}
+                      </span>
+                    </li>
+                  ))}
               </ul>
+              {attempt.events.length > 8 && (
+                <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+                  나머지 {attempt.events.length - 8}개는 화면에 싣지 않았습니다. 전체 횟수는 위
+                  '정렬 결과'의 과잉 보정 값과 같습니다.
+                </p>
+              )}
             </Card>
           )}
 
@@ -281,6 +344,125 @@ export function Result() {
         </div>
       </div>
     </>
+  )
+}
+
+/**
+ * 학습 피드백 카드.
+ * 생성에 실패해도 **학습자가 제출한 답변은 서버에 그대로 남아 있다**는 것을 화면에 알린다.
+ */
+/** 서버가 실패 사유를 JSON 문자열로 담아 줄 때가 있다. 사람이 읽을 문장만 꺼낸다. */
+function readableError(raw: string | null): string | null {
+  if (!raw) return null
+  const text = raw.trim()
+  if (!text.startsWith('{')) return text
+  try {
+    const parsed = JSON.parse(text) as { message?: string }
+    return parsed.message ?? text
+  } catch {
+    return text
+  }
+}
+
+function FeedbackCard({ attempt, onChanged }: { attempt: Attempt; onChanged: () => void }) {
+  const [retrying, setRetrying] = useState(false)
+  const [retryError, setRetryError] = useState<string | null>(null)
+
+  const status = attempt.feedbackStatus
+  const failed = status === 'failed' || (status !== 'ready' && Boolean(attempt.feedbackError))
+
+  async function retry() {
+    setRetrying(true)
+    setRetryError(null)
+    try {
+      await requestFeedback(attempt.id)
+      onChanged()
+    } catch (e: unknown) {
+      setRetryError(e instanceof Error ? e.message : '피드백을 만들지 못했습니다.')
+    } finally {
+      setRetrying(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title="학습 피드백"
+        subtitle="기록된 궤적과 제출 답변만 근거로 만듭니다"
+        aside={
+          attempt.feedback ? (
+            attempt.feedback.generatedBy === 'mock' ? (
+              <Badge tone="warn">AI 미연결 · 규칙 기반 샘플</Badge>
+            ) : (
+              <Badge tone="ok">AI 생성</Badge>
+            )
+          ) : failed ? (
+            <Badge tone="alert">생성 실패</Badge>
+          ) : status === 'pending' ? (
+            <Badge tone="brand">생성 중</Badge>
+          ) : (
+            <Badge tone="muted">아직 없음</Badge>
+          )
+        }
+      />
+
+      {attempt.feedback ? (
+        <div className="space-y-4">
+          <FeedbackBlock title="잘 한 부분" tone="ok" items={attempt.feedback.good} />
+          <FeedbackBlock title="보완할 부분" tone="warn" items={attempt.feedback.improve} />
+          <FeedbackBlock title="다음 연습 제안" tone="brand" items={[attempt.feedback.nextStep]} />
+          <FeedbackBlock
+            title="이 기록으로 판단할 수 없는 것"
+            tone="muted"
+            items={attempt.feedback.cannotJudge}
+          />
+        </div>
+      ) : failed ? (
+        <div className="rounded-lg border border-alert-500/30 bg-alert-50/50 px-3.5 py-3">
+          <div className="text-[13px] font-semibold text-slate-800">
+            피드백을 만들지 못했습니다
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-slate-600">
+            {retryError ?? readableError(attempt.feedbackError) ?? '생성 중 문제가 발생했습니다.'}
+          </p>
+          <p className="mt-1.5 text-[12px] font-medium text-slate-700">
+            제출한 답변과 연습 기록은 그대로 저장되어 있습니다. 다시 만들어도 답변은 바뀌지 않습니다.
+          </p>
+          <button
+            type="button"
+            onClick={retry}
+            disabled={retrying}
+            className="mt-3 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:bg-slate-300"
+          >
+            {retrying ? '다시 시도 중…' : '다시 시도'}
+          </button>
+        </div>
+      ) : status === 'pending' ? (
+        <EmptyState title="피드백을 만들고 있습니다" description="잠시 뒤 이 화면을 새로 고쳐 주세요." />
+      ) : (
+        <div>
+          <EmptyState
+            title="피드백이 아직 없습니다"
+            description="피드백을 만들어도 제출한 답변은 바뀌지 않습니다. 실패해도 답변은 보존됩니다."
+          />
+          {attempt.answer && (
+            <button
+              type="button"
+              onClick={retry}
+              disabled={retrying}
+              className="mt-3 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:bg-slate-300"
+            >
+              {retrying ? '만드는 중…' : '피드백 만들기'}
+            </button>
+          )}
+          {retryError && (
+            <p className="mt-2 rounded-lg bg-alert-50 px-3 py-2 text-[12px] leading-relaxed text-alert-500">
+              {retryError} — 제출한 답변은 그대로 남아 있습니다.
+            </p>
+          )}
+        </div>
+      )}
+    </Card>
   )
 }
 

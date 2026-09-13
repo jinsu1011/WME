@@ -12,7 +12,7 @@ SCHEMA_PATH = BACKEND_DIR / "schema.sql"
 DB_PATH = Path(os.environ.get("WME_DB_PATH", PROJECT_ROOT / "data" / "local" / "wme.db"))
 
 # 버전 3종. attempt 에 그대로 복사 저장해서 과거 기록의 근거가 조용히 바뀌지 않게 한다.
-COURSE_VERSION = "align-1.0.0"
+COURSE_VERSION = "course-2.0.0"   # 프론트 courses.ts 와 같은 문자열을 쓴다
 MODEL_VERSION = "rule-align-1.0.0"      # 규칙 기반 정렬 경로 분석 버전(학습 모델 아님)
 SETTINGS_VERSION = "align-settings-1.0.0"
 

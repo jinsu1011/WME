@@ -17,12 +17,16 @@ from .analysis import analyze
 from .config import (COURSE_VERSION, MODEL_VERSION, SETTINGS_VERSION, llm_configured)
 from .db import connect, init_db
 from .llm.service import FeedbackError, generate
+from .scoring import score as rule_score
 
 app = FastAPI(title="WME — We Make Experts API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173", "http://127.0.0.1:5173",     # vite dev
+        "http://localhost:4173", "http://127.0.0.1:4173",     # vite preview (빌드본)
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -60,14 +64,34 @@ class AttemptCreate(BaseModel):
 
 
 class PhaseBody(BaseModel):
-    phase: Literal["idle", "moving", "settling", "ended"]
+    # 정렬 실습의 단계 전환. confirmed(정렬 확정)가 측정 종료 시점이다.
+    phase: Literal["idle", "aligning", "confirmed", "submitted"]
     tMs: int = Field(ge=0)
 
 
 class SubmissionBody(BaseModel):
-    evidenceIds: list[str] = Field(default_factory=list)
-    checkItemId: str
+    # 학습자는 근거 구간을 고르지 않는다. "어떤 순서로 조정했는지"만 고르고 이유를 쓴다.
+    orderOptionId: str
     reason: str = Field(min_length=1, max_length=2000)
+
+
+# --- 사용자 ---------------------------------------------------------------
+# 이름·소속의 출처를 서버 한 곳으로 모은다. 프론트가 자기 시드에서 읽으면
+# 사람 정보가 두 벌이 되고 서로 달라진다.
+# 데모 계정이며 인증 구현이 아니다. 비밀번호·개인정보는 저장하지 않는다.
+
+@app.get("/api/users")
+def get_users(role: str | None = Query(None, pattern="^(learner|instructor)$"),
+              conn=Depends(db)) -> list[dict]:
+    return repo.list_users(conn, role)
+
+
+@app.get("/api/users/{user_id}")
+def get_user(user_id: str, conn=Depends(db)) -> dict:
+    user = repo.get_user(conn, user_id)
+    if not user:
+        raise HTTPException(404, "사용자를 찾을 수 없습니다.")
+    return user
 
 
 # --- 1·2. 과정 ------------------------------------------------------------
@@ -140,7 +164,7 @@ def create_attempt(body: AttemptCreate, conn=Depends(db)) -> dict:
         """INSERT INTO attempts (id, enrollment_id, attempt_no, source, input_device,
                                  status, started_at, phase_markers_json, duration_sec,
                                  course_version, model_version, settings_version)
-           VALUES (?,?,?,?,?, 'measuring', ?, '[]', 0, ?,?,?)""",
+           VALUES (?,?,?,?,?, 'aligning', ?, '[]', 0, ?,?,?)""",
         (attempt_id, enr["id"], no, body.source, body.inputDevice, repo.now_iso(),
          course["version"], MODEL_VERSION, SETTINGS_VERSION))
     row = repo.get_attempt_row(conn, attempt_id)
@@ -157,7 +181,8 @@ def post_phase(attempt_id: str, body: PhaseBody, conn=Depends(db)) -> dict:
     conn.execute("UPDATE attempts SET phase_markers_json = ? WHERE id = ?",
                  (json.dumps(markers, ensure_ascii=False), attempt_id))
 
-    if body.phase == "ended":
+    if body.phase == "confirmed":
+        # 정렬 확정 = 측정 종료. 여기서 규칙 기반 분석을 돌린다.
         _finalize(conn, attempt_id)
     return repo.attempt_to_dict(conn, repo.get_attempt_row(conn, attempt_id))  # type: ignore[arg-type]
 
@@ -167,8 +192,8 @@ def _finalize(conn, attempt_id: str) -> None:
     row = repo.get_attempt_row(conn, attempt_id)
     if not row:
         raise HTTPException(404, "시도를 찾을 수 없습니다.")
-    if not repo.can_transition(row["status"], "measured"):
-        raise HTTPException(409, f"'{row['status']}' 상태에서는 측정을 끝낼 수 없습니다.")
+    if not repo.can_transition(row["status"], "aligned"):
+        raise HTTPException(409, f"'{row['status']}' 상태에서는 정렬을 확정할 수 없습니다.")
 
     samples = conn.execute(
         "SELECT t_ms, wafer_x, wafer_y, wafer_theta FROM measurements "
@@ -192,7 +217,7 @@ def _finalize(conn, attempt_id: str) -> None:
         [(e.id, attempt_id, e.start_ms, e.end_ms, e.type,
           json.dumps(e.metrics, ensure_ascii=False)) for e in result.events])
     conn.execute(
-        """UPDATE attempts SET status='measured', ended_at=?, summary_json=?, duration_sec=?
+        """UPDATE attempts SET status='aligned', ended_at=?, summary_json=?, duration_sec=?
            WHERE id=?""",
         (repo.now_iso(), json.dumps(result.summary, ensure_ascii=False),
          result.summary["duration_ms"] // 1000, attempt_id))
@@ -222,28 +247,28 @@ def post_submission(attempt_id: str, body: SubmissionBody, conn=Depends(db)) -> 
     if not repo.can_transition(row["status"], "submitted"):
         raise HTTPException(409, f"'{row['status']}' 상태에서는 답변을 제출할 수 없습니다.")
 
-    valid = set(repo.event_ids(conn, attempt_id))
-    unknown = [e for e in body.evidenceIds if e not in valid]
-    if unknown:
-        raise HTTPException(422, f"이 시도에 없는 근거 구간입니다: {unknown}")
-
     enr = conn.execute("SELECT course_id FROM enrollments WHERE id = ?",
                        (row["enrollment_id"],)).fetchone()
     course = repo.get_course(conn, enr["course_id"])
-    check_ids = {c["id"] for c in (course or {}).get("content", {}).get("checkItems", [])}
-    if check_ids and body.checkItemId not in check_ids:
-        raise HTTPException(422, f"이 과정에 없는 점검 항목입니다: {body.checkItemId}")
+    order_ids = {o["id"] for o in (course or {}).get("content", {}).get("orderOptions", [])}
+    if order_ids and body.orderOptionId not in order_ids:
+        raise HTTPException(422, f"이 과정에 없는 조정 순서입니다: {body.orderOptionId}")
 
     answer = {
-        "evidenceIds": body.evidenceIds,
-        "checkItemId": body.checkItemId,
+        "orderOptionId": body.orderOptionId,
         # 학습자가 쓴 글은 데이터다. 내용을 해석하거나 명령으로 따르지 않는다.
         "reason": body.reason,
         "submittedAt": repo.now_iso(),
     }
+    # 답변을 저장하면서 바로 규칙 기반으로 채점한다.
+    # LLM 이 없거나 실패해도 기준별 확인은 나와야 하기 때문이다.
+    # 이 점수는 AI 채점이 아니며 rubric_source='rule' 로 출처를 남긴다.
+    scored = rule_score(course or {}, json.loads(row["summary_json"] or "null"), answer)
     conn.execute(
-        "UPDATE attempts SET answer_json = ?, status = 'submitted' WHERE id = ?",
-        (json.dumps(answer, ensure_ascii=False), attempt_id))
+        """UPDATE attempts SET answer_json = ?, status = 'submitted',
+           rubric_scores_json = ?, rubric_source = 'rule' WHERE id = ?""",
+        (json.dumps(answer, ensure_ascii=False),
+         json.dumps(scored["levels"]), attempt_id))
     return repo.attempt_to_dict(conn, repo.get_attempt_row(conn, attempt_id),  # type: ignore[arg-type]
                                 include_samples=False)
 
@@ -291,7 +316,8 @@ def post_feedback(attempt_id: str, conn=Depends(db)) -> dict:
         )
     except FeedbackError as exc:
         # 검증 실패·호출 실패 어느 쪽이든 피드백을 저장하지 않는다.
-        # 학습자가 제출한 answer_json 은 그대로 두고, 재시도할 수 있게 남긴다.
+        # 학습자가 제출한 answer_json 과 규칙 기반 점수(rubric_scores_json)는 그대로 두고,
+        # 재시도할 수 있게 남긴다. LLM 실패가 채점을 막지 않는다.
         conn.execute(
             """UPDATE attempts SET feedback_status='failed', status='feedback_failed',
                feedback_error=? WHERE id=?""",
@@ -302,10 +328,11 @@ def post_feedback(attempt_id: str, conn=Depends(db)) -> dict:
                                   "retryable": exc.retryable,
                                   "answerPreserved": True}) from exc
 
+    # LLM 채점이 성공했으므로 규칙 기반 점수를 모델 점수로 덮어쓰고 출처를 바꾼다.
     scores = feedback["rubricScores"]
     conn.execute(
-        """UPDATE attempts SET feedback_json=?, rubric_scores_json=?, feedback_status='ready',
-           status='feedback_ready', feedback_error=NULL WHERE id=?""",
+        """UPDATE attempts SET feedback_json=?, rubric_scores_json=?, rubric_source='llm',
+           feedback_status='ready', status='feedback_ready', feedback_error=NULL WHERE id=?""",
         (json.dumps(feedback, ensure_ascii=False),
          json.dumps(scores, ensure_ascii=False), attempt_id))
     return repo.attempt_to_dict(conn, repo.get_attempt_row(conn, attempt_id),  # type: ignore[arg-type]
@@ -366,7 +393,7 @@ async def ws_attempt(ws: WebSocket, attempt_id: str) -> None:
 
     받는 메시지:
       {"type":"sample","tMs":120,"roll":..,"pitch":..,"waferX":..,"waferY":..,"waferTheta":..}
-      {"type":"end"}
+      {"type":"confirm"}  (정렬 확정 = 측정 종료)
     보내는 메시지: 현재 남은 오차와 허용 범위 안에 들어왔는지.
     센서가 없어도 프론트가 키보드 입력으로 같은 메시지를 보내면 동일하게 동작한다.
     """
@@ -411,14 +438,14 @@ async def ws_attempt(ws: WebSocket, attempt_id: str) -> None:
                                     "dx": dx, "dy": dy, "dtheta": dth,
                                     "withinTolerance": within})
 
-            elif kind == "end":
+            elif kind in ("confirm", "end"):
                 try:
                     _finalize(conn, attempt_id)
                     conn.commit()
                     result = repo.attempt_to_dict(
                         conn, repo.get_attempt_row(conn, attempt_id),  # type: ignore[arg-type]
                         include_samples=False)
-                    await ws.send_json({"type": "measured", "attempt": result})
+                    await ws.send_json({"type": "aligned", "attempt": result})
                 except HTTPException as exc:
                     await ws.send_json({"type": "error", "message": str(exc.detail)})
                 break

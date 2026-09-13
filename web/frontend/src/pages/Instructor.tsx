@@ -1,17 +1,44 @@
 import { Link } from 'react-router-dom'
 import { IMPLEMENTED_COURSE_ID } from '@/data/courses'
 import { allAttempts, allLearnerStats, fetchCourse, instructorOverview } from '@/api'
+import type { Attempt, Course, InstructorRow, LearnerStats } from '@/types'
 import { tenant } from '@/data/tenant'
 import { ActivityBars, LearnerProgressBars } from '@/charts/Charts'
 import { Badge } from '@/components/Badge'
+import { ApiModeBadge, Loaded } from '@/components/LoadState'
 import { Card, CardHeader, DemoDataNote, EmptyState, PageHeader, StatTile } from '@/components/ui'
 import { relativeDay, weeklyActivity } from '@/lib/stats'
+import { useApi } from '@/lib/useApi'
+
+interface OverviewData {
+  rows: InstructorRow[]
+  stats: LearnerStats[]
+  course: Course
+  attempts: Attempt[]
+}
 
 export function Instructor() {
-  const rows = instructorOverview()
-  const stats = allLearnerStats()
-  const course = fetchCourse(IMPLEMENTED_COURSE_ID)!
-  const activity = weeklyActivity(allAttempts())
+  const state = useApi<OverviewData>(async () => {
+    const [rows, stats, course, attempts] = await Promise.all([
+      instructorOverview(),
+      allLearnerStats(),
+      fetchCourse(IMPLEMENTED_COURSE_ID),
+      allAttempts(),
+    ])
+    if (!course) throw new Error('실습 과정을 불러오지 못했습니다.')
+    return { rows, stats, course, attempts }
+  }, [])
+
+  return (
+    <Loaded state={state} label="교육 현황을 불러오는 중입니다">
+      {(data) => <InstructorView data={data} />}
+    </Loaded>
+  )
+}
+
+function InstructorView({ data }: { data: OverviewData }) {
+  const { rows, stats, course } = data
+  const activity = weeklyActivity(data.attempts)
 
   const completed = rows.filter((r) => r.enrollment.status === 'completed').length
   const notStarted = rows.filter((r) => r.enrollment.status === 'not_started').length
@@ -27,12 +54,15 @@ export function Instructor() {
         title="교육 현황"
         description={`${course.title} · 배정 ${rows.length}명. 저장된 학습 기록에서 계산한 값만 표시합니다.`}
         actions={
-          <Link
-            to="/instructor/learners"
-            className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-          >
-            학습자 전체 보기
-          </Link>
+          <div className="flex items-center gap-2">
+            <ApiModeBadge />
+            <Link
+              to="/instructor/learners"
+              className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+            >
+              학습자 전체 보기
+            </Link>
+          </div>
         }
       />
 
@@ -105,7 +135,7 @@ export function Instructor() {
   )
 }
 
-export function LearnerTable({ rows }: { rows: ReturnType<typeof instructorOverview> }) {
+export function LearnerTable({ rows }: { rows: InstructorRow[] }) {
   return (
     <table className="w-full text-left text-[13px]">
       <thead className="border-y border-slate-100 text-[11px] font-medium text-slate-400">

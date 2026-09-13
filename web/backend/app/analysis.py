@@ -30,7 +30,8 @@ MOTION_SPEED_DEG_S = 0.4      # 초당 회전 변화량 하한
 # 움직임으로 잡히고 보정 구간이 전부 하나로 뭉친다 — 실제로 확인한 문제다.
 MOTION_WINDOW_MS = 200
 # 보정 구간 사이의 짧은 정지는 같은 구간으로 묶는다.
-SEGMENT_GAP_MS = 300
+# 창 길이(아래 MOTION_WINDOW_MS)만큼 뒤로 번지므로, 실제로는 약 450ms 보다 긴 정지에서 나뉜다.
+SEGMENT_GAP_MS = 250
 # 너무 짧은 움직임은 구간으로 만들지 않는다.
 MIN_SEGMENT_MS = 150
 # 과잉 보정 판정: 목표(0)를 지나친 뒤 반대쪽으로 이 정도는 벗어나야 인정한다.
@@ -115,8 +116,9 @@ def find_adjustment_segments(samples: Sequence[Sample]) -> list[tuple[int, int]]
         pos_speed = math.hypot(b.x - a.x, b.y - a.y) / dt_s
         rot_speed = abs(b.theta - a.theta) / dt_s
         if pos_speed >= MOTION_SPEED_PX_S or rot_speed >= MOTION_SPEED_DEG_S:
-            for k in range(j, i + 1):
-                moving[k] = True
+            # 창의 끝 샘플만 표시한다. 창 전체를 표시하면 움직임이 앞뒤로 번져서
+            # 사이의 정지가 지워지고 보정 구간이 전부 하나로 붙는다 — 실제로 확인한 문제다.
+            moving[i] = True
 
     segments: list[list[int]] = []
     i = 0
@@ -150,7 +152,16 @@ def segment_metrics(samples: Sequence[Sample], a: int, b: int,
 
     before = _position_error(samples[a])
     after = _position_error(samples[b])
+    # 프론트 AlignmentEvent 는 축을 'xy' / 'theta' 두 가지로만 본다.
+    axis = "theta" if dominant == "theta" else "xy"
+    if axis == "theta":
+        err_before, err_after = abs(samples[a].theta), abs(samples[b].theta)
+    else:
+        err_before, err_after = before, after
     return {
+        "axis": axis,
+        "errorBefore": round(err_before, 3),
+        "errorAfter": round(err_after, 3),
         "dominantAxis": dominant,
         "movedX": round(samples[b].x - samples[a].x, 3),
         "movedY": round(samples[b].y - samples[a].y, 3),
@@ -196,10 +207,13 @@ def find_overshoots(samples: Sequence[Sample]) -> list[dict[str, Any]]:
             # 되돌아오기 시작했고, 벗어난 양이 밴드를 넘었으면 과잉 보정으로 확정
             if abs(peak_val) >= band and abs(cur) < abs(peak_val) * 0.6:
                 found.append({
-                    "axis": ax,
+                    "axis": "theta" if ax == "theta" else "xy",
+                    "movedAxis": ax,
                     "start_ms": samples[cross_idx].t_ms,
                     "end_ms": samples[i].t_ms,
                     "peak_ms": samples[peak_idx or i].t_ms,
+                    "errorBefore": round(abs(values[cross_idx]), 3),
+                    "errorAfter": round(abs(cur), 3),
                     "overshootAmount": round(abs(peak_val), 3),
                     "unit": "deg" if ax == "theta" else "px",
                 })
@@ -320,7 +334,8 @@ def analyze(samples_in: Iterable[Any], tolerance: dict[str, float] | None = None
             "toleranceNote": "허용 오차는 교육 과정 설정값이며 실제 장비의 정렬 정밀도가 아니다.",
             "convergence": pattern,
             "axisInterferenceEventIds": interference,
-            "overshootByAxis": {ax: sum(1 for o in overshoots if o["axis"] == ax) for ax in AXES},
+            "overshootByAxis": {ax: sum(1 for o in overshoots if o["movedAxis"] == ax)
+                                for ax in AXES},
             "analyzerVersion": "rule-align-1.0.0",
         },
     }

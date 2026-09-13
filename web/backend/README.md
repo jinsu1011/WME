@@ -20,7 +20,7 @@ DB 파일은 `data/local/wme.db` 에 만들어진다(깃에 올라가지 않는�
 |---|---|
 | `schema.sql` | 6테이블 DDL. `실습과정_정렬.md` 9절 변경 반영 |
 | `app/analysis.py` | **정렬 경로 분석 — 규칙 기반**. 과잉 보정·축 간섭·수렴 패턴. 모델 학습 없음 |
-| `app/course_data.py` | 과정 정의(단계·루브릭 4개·허용 오차). 업종 내용은 전부 여기에만 |
+| `app/course_data.py` | 과정 정의(단계 5개·조정 순서 선택지 4개·루브릭 4개·허용 오차) |
 | `app/trajectory.py` | 데모용 합성 궤적. 실측이 아니다(`source='mock'`) |
 | `app/seed.py` | 시드 삽입 |
 | `app/repo.py` | DB 읽기·쓰기와 응답 직렬화 |
@@ -46,7 +46,10 @@ export WME_LLM_API_KEY="..."
 
 - 재실습은 새 attempt (`attempt_no` = 최대값+1). 이전 기록을 덮어쓰지 않는다
 - 준비 중 과정은 시도를 만들 수 없다 (409)
-- 답변·피드백이 참조하는 근거 ID 는 그 시도의 events 에 있어야 한다 (422 / 저장 거부)
+- 제출은 `orderOptionId`(조정 순서) + `reason` 만 받는다. 학습자가 근거 구간을 고르지 않는다
+- 상태는 `aligning → aligned → submitted → feedback_ready / feedback_failed` 순서만 (409)
+- 정렬 확정(`phase: confirmed`)이 측정 종료다. 이때 분석이 돌아간다
+- AI 피드백이 참조하는 `eventIds` 는 그 시도의 events 에 있어야 한다 (저장 거부)
 - 루브릭 점수는 길이가 루브릭 개수와 같고 값이 0·1·2 여야 한다 (저장 거부)
 - 진도는 저장된 단계 기록으로만 올린다
 - 학습자가 쓴 글은 데이터다. 프롬프트에서 구분자로 감싸고, 그 안의 명령문을 지시로 따르지 않는다

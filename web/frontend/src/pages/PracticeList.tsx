@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
-import { fetchCourse, listAttempts, listEnrollments, statsFor } from '@/api'
-import type { Attempt, Course, Enrollment } from '@/types'
+import { listAttempts, listCourses, listEnrollments, statsFor } from '@/api'
+import type { Attempt, Course, Enrollment, LearnerStats } from '@/types'
 import { tenant } from '@/data/tenant'
 import { Badge } from '@/components/Badge'
+import { ApiModeBadge, Loaded } from '@/components/LoadState'
 import { Card, EmptyState, PageHeader, ProgressBar } from '@/components/ui'
 import { useDemo } from '@/lib/demo'
+import { useApi } from '@/lib/useApi'
 import { attemptScorePct, courseProgressPct, relativeDay } from '@/lib/stats'
 
 interface Item {
@@ -15,15 +17,49 @@ interface Item {
   done: boolean
 }
 
+interface HomeData {
+  courses: Course[]
+  enrollments: Enrollment[]
+  attempts: Attempt[]
+  stats: LearnerStats
+}
+
 /** 로그인 후 첫 화면. 해야 할 실습을 위에, 끝낸 실습을 아래에 둔다. */
 export function PracticeList() {
-  const { currentUser } = useDemo()
-  const stats = statsFor(currentUser.id)!
-  const allAttempts = listAttempts(currentUser.id)
+  const { userId, currentUser } = useDemo()
+  const state = useApi<HomeData>(async () => {
+    const [courses, enrollments, attempts, stats] = await Promise.all([
+      listCourses(),
+      listEnrollments(userId),
+      listAttempts(userId),
+      statsFor(userId),
+    ])
+    if (!stats) throw new Error('학습 기록을 불러오지 못했습니다.')
+    return { courses, enrollments, attempts, stats }
+  }, [userId])
 
-  const items: Item[] = listEnrollments(currentUser.id)
+  return (
+    <>
+      <PageHeader
+        eyebrow={`${tenant.companyName} · ${tenant.programTitle}`}
+        title={currentUser ? `${currentUser.displayName}님, 오늘도 한 번 연습해 볼까요?` : '오늘도 한 번 연습해 볼까요?'}
+        description="평가가 아니라 연습입니다. 여러 번 할수록 기록이 쌓이고 변화가 보입니다."
+        actions={<ApiModeBadge />}
+      />
+      <Loaded state={state} label="실습 목록을 불러오는 중입니다">
+        {(data) => <PracticeListView data={data} />}
+      </Loaded>
+    </>
+  )
+}
+
+function PracticeListView({ data }: { data: HomeData }) {
+  const { stats } = data
+  const allAttempts = data.attempts
+
+  const items: Item[] = data.enrollments
     .map((enrollment) => {
-      const course = fetchCourse(enrollment.courseId)
+      const course = data.courses.find((c) => c.id === enrollment.courseId)
       if (!course) return null
       return {
         course,
@@ -42,12 +78,6 @@ export function PracticeList() {
 
   return (
     <>
-      <PageHeader
-        eyebrow={`${tenant.companyName} · ${tenant.programTitle}`}
-        title={`${currentUser.displayName}님, 오늘도 한 번 연습해 볼까요?`}
-        description="평가가 아니라 연습입니다. 여러 번 할수록 기록이 쌓이고 변화가 보입니다."
-      />
-
       <div className="mb-7 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-slate-200/80 bg-white px-5 py-3.5 text-[13px]">
         <Summary label="해야 할 실습" value={`${todo.length}개`} />
         <Summary label="누적 연습" value={`${stats.attemptCount}회`} />

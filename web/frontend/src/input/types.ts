@@ -1,4 +1,4 @@
-import type { InputSource } from '@/types'
+import type { InputDevice } from '@/types'
 
 /**
  * 컨트롤러 한 틱의 출력. **위치가 아니라 속도**다.
@@ -21,7 +21,7 @@ export interface ControllerVelocity {
  */
 export interface ControllerSource {
   /** 화면에 표시할 입력 출처 */
-  readonly kind: InputSource
+  readonly kind: InputDevice
   /** 이 구현체를 지금 쓸 수 있는지. 못 쓰면 화면이 이유를 표시한다. */
   readonly available: boolean
   /** 쓸 수 없을 때의 이유 (있으면 화면에 그대로 보여준다) */

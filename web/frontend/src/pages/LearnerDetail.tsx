@@ -5,29 +5,66 @@ import {
   fetchCourse,
   fetchUser,
   listAttempts,
+  listCourses,
   listEnrollments,
   statsFor,
 } from '@/api'
+import type { Attempt, Course, Enrollment, LearnerStats, User } from '@/types'
 import { AchievementPanels } from '@/components/Achievement'
+import { Loaded } from '@/components/LoadState'
+import { useApi } from '@/lib/useApi'
 import { LearnerProgressBars } from '@/charts/Charts'
 import { Badge, DataSourceBadge } from '@/components/Badge'
 import { Card, CardHeader, DemoDataNote, EmptyState, PageHeader, ProgressBar, StatTile } from '@/components/ui'
 import { scoreBand } from '@/charts/theme'
 import { attemptScorePct, cohortRubricPct, courseProgressPct, relativeDay } from '@/lib/stats'
 
+interface DetailData {
+  user: User
+  stats: LearnerStats
+  course: Course
+  attempts: Attempt[]
+  enrollments: Enrollment[]
+  all: LearnerStats[]
+  /** 과정별 진도에서 제목을 찾기 위한 목록 */
+  courses: Course[]
+}
+
 export function LearnerDetail() {
   const { learnerId } = useParams()
-  const user = learnerId ? fetchUser(learnerId) : undefined
-  const stats = learnerId ? statsFor(learnerId) : null
+  const state = useApi<DetailData | null>(async () => {
+    if (!learnerId) return null
+    const [user, stats, course, attempts, enrollments, all, courses] = await Promise.all([
+      fetchUser(learnerId),
+      statsFor(learnerId),
+      fetchCourse(IMPLEMENTED_COURSE_ID),
+      listAttempts(learnerId),
+      listEnrollments(learnerId),
+      allLearnerStats(),
+      listCourses(),
+    ])
+    if (!user || !stats || !course) return null
+    return { user, stats, course, attempts, enrollments, all, courses }
+  }, [learnerId])
 
-  if (!user || !stats) {
-    return <EmptyState title="존재하지 않는 학습자입니다" description="학습자 목록에서 다시 선택해 주세요." />
-  }
+  return (
+    <Loaded state={state} label="학습자 기록을 불러오는 중입니다">
+      {(data) =>
+        data ? (
+          <LearnerDetailView data={data} />
+        ) : (
+          <EmptyState
+            title="존재하지 않는 학습자입니다"
+            description="학습자 목록에서 다시 선택해 주세요."
+          />
+        )
+      }
+    </Loaded>
+  )
+}
 
-  const course = fetchCourse(IMPLEMENTED_COURSE_ID)!
-  const attempts = listAttempts(user.id)
-  const enrollments = listEnrollments(user.id)
-  const all = allLearnerStats()
+function LearnerDetailView({ data }: { data: DetailData }) {
+  const { user, stats, course, attempts, enrollments, all } = data
   const cohort = cohortRubricPct(all)
   const ranking = [...all]
     .sort((a, b) => b.progressPct - a.progressPct)
@@ -112,7 +149,7 @@ export function LearnerDetail() {
             <CardHeader title="과정별 진도" />
             <div className="space-y-3.5">
               {enrollments.map((e) => {
-                const c = fetchCourse(e.courseId)
+                const c = data.courses.find((x) => x.id === e.courseId)
                 if (!c) return null
                 return (
                   <div key={e.id}>

@@ -7,3 +7,4 @@ data/local/*.db
 __pycache__/
 *.pyc
 .venv/
+data/local/*.db-*

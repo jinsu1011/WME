@@ -1,21 +1,40 @@
 import { Link } from 'react-router-dom'
-import { fetchCourse, listAttempts } from '@/api'
-import { Badge, InputSourceBadge } from '@/components/Badge'
+import { listAttempts, listCourses } from '@/api'
+import type { Attempt, Course } from '@/types'
+import { Badge, InputDeviceBadge } from '@/components/Badge'
+import { ApiModeBadge, Loaded } from '@/components/LoadState'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { scoreBand } from '@/charts/theme'
 import { attemptScorePct, relativeDay } from '@/lib/stats'
+import { useApi } from '@/lib/useApi'
 import { useDemo } from '@/lib/demo'
 
 export function Records() {
-  const { currentUser } = useDemo()
-  const attempts = listAttempts(currentUser.id)
+  const { userId } = useDemo()
+  const state = useApi(
+    () => Promise.all([listAttempts(userId), listCourses()]),
+    [userId],
+  )
 
   return (
     <>
       <PageHeader
         title="기록"
         description="연습할 때마다 새 기록이 쌓입니다. 이전 기록과 피드백은 지워지지 않습니다."
+        actions={<ApiModeBadge />}
       />
+      <Loaded state={state} label="연습 기록을 불러오는 중입니다">
+        {([attempts, courses]) => <RecordTable attempts={attempts} courses={courses} />}
+      </Loaded>
+    </>
+  )
+}
+
+function RecordTable({ attempts, courses }: { attempts: Attempt[]; courses: Course[] }) {
+  const courseTitle = (id: string) => courses.find((c) => c.id === id)?.title ?? id
+
+  return (
+    <>
 
       {attempts.length === 0 ? (
         <EmptyState title="아직 실습 기록이 없습니다" description="과정 상세에서 실습을 시작하면 기록이 남습니다." />
@@ -39,10 +58,10 @@ export function Records() {
                 return (
                   <tr key={a.id} className="transition hover:bg-slate-50/70">
                     <td className="whitespace-nowrap px-5 py-3.5 font-medium text-slate-700">{a.attemptNo}차</td>
-                    <td className="max-w-[230px] truncate px-5 py-3.5 text-slate-600">{fetchCourse(a.courseId)?.title}</td>
+                    <td className="max-w-[230px] truncate px-5 py-3.5 text-slate-600">{courseTitle(a.courseId)}</td>
                     <td className="px-5 py-3.5">
                       <span className="flex flex-wrap items-center gap-1.5">
-                        <InputSourceBadge value={a.inputSource} />
+                        <InputDeviceBadge value={a.inputDevice} />
                         {a.source === 'mock' && <Badge tone="warn">예시 데이터</Badge>}
                       </span>
                     </td>

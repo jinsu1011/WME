@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:server": "vite --mode server --port 5174",
+    "build:server": "tsc -b && vite build --mode server"
   },
   "dependencies": {
     "react": "^19.2.8",

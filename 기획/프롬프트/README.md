@@ -11,6 +11,7 @@
 | `FRONT.md` | 화면을 고칠 때 | `web/frontend/` |
 | `BACK.md` | 서버·DB·LLM을 고칠 때 | `web/backend/`, `data/local/` |
 | `SENSOR.md` | 아두이노·측정 작업을 할 때 | `hardware/`, `data/` |
+| `FRONT_센서.md` | 센서 → 화면 연결만 고칠 때 (SENSOR 다음에) | `web/frontend/` (센서 관련 파일만) |
 
 ## 규칙 두 개만 지키면 사고가 안 난다
 

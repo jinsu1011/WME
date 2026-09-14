@@ -11,6 +11,8 @@ node_modules
 # node_modules 는 deps.nosync/node_modules 를 가리키는 링크다(iCloud 동기화 제외용).
 # 실제 폴더 이름이 node_modules 여야 Vite 가 라이브러리로 인식한다
 *.nosync/
+# iCloud 가 만드는 충돌 사본("node_modules 2" 등)
+node_modules [0-9]*/
 dist
 dist-ssr
 *.local

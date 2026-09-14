@@ -65,16 +65,26 @@ void setup() { // 보드가 켜지거나 리셋되면 한 번 실행합니다.
   if (!writeRegister(0x1A, 0x03) || !writeRegister(0x19, 0x04)) { haltSensor(F("RATE_FAILED")); } // 저역 필터와 센서 내부 200Hz 갱신을 설정합니다.
   if (!writeRegister(0x1B, 0x00) || !writeRegister(0x1C, 0x00)) { haltSensor(F("RANGE_FAILED")); } // 자이로 ±250도/초와 가속도 ±2g를 선택합니다.
   delay(100); // 필터와 새 설정이 안정될 시간을 줍니다.
-  Serial.println(F("INFO,KEEP_STILL_CALIBRATING")); // 약 2초간 평평한 책상에서 손대지 않아야 합니다.
   float sumZ = 0.0f; // 정지 상태의 자이로 Z축 값을 더할 변수입니다.
-  for (uint16_t i = 0; i < CALIBRATION_SAMPLES; ++i) { // 정해진 수만큼 정지 측정합니다.
-    float ax, ay, az, gz; // 이번 샘플의 물리량을 담습니다.
-    if (!readMotion(ax, ay, az, gz)) { haltSensor(F("CALIBRATION_READ_FAILED")); } // 보정 중 끊김도 실패로 처리합니다.
-    float gravity = sqrt(ax * ax + ay * ay + az * az); // 심한 움직임을 발견하기 위해 가속도 크기를 계산합니다.
-    if (gravity < 0.85f || gravity > 1.15f || fabs(gz) > 10.0f) { haltSensor(F("KEEP_STILL_AND_RESET")); } // 큰 움직임이면 다시 보정해야 합니다.
-    sumZ += gz; // 일정한 영점 오차를 평균내기 위해 더합니다.
-    delay(5); // 센서 내부 갱신 주기에 맞춰 다음 샘플을 기다립니다.
-  } // 영점 측정 반복 끝입니다.
+  bool calibrated = false; // 움직임 없이 보정을 끝까지 마쳤는지 여부입니다.
+  while (!calibrated) { // 성공할 때까지 보정을 처음부터 다시 시도합니다.
+    Serial.println(F("INFO,KEEP_STILL_CALIBRATING")); // 매 시도마다 약 2초간 손대지 않아야 한다고 알립니다.
+    sumZ = 0.0f; // 이전 시도에서 더한 값을 버리고 새로 시작합니다.
+    calibrated = true; // 중간에 움직임이 없으면 이 시도가 성공입니다.
+    for (uint16_t i = 0; i < CALIBRATION_SAMPLES; ++i) { // 정해진 수만큼 정지 측정합니다.
+      float ax, ay, az, gz; // 이번 샘플의 물리량을 담습니다.
+      if (!readMotion(ax, ay, az, gz)) { haltSensor(F("CALIBRATION_READ_FAILED")); } // 보정 중 통신 끊김은 배선 문제이므로 멈춥니다.
+      float gravity = sqrt(ax * ax + ay * ay + az * az); // 심한 움직임을 발견하기 위해 가속도 크기를 계산합니다.
+      if (gravity < 0.85f || gravity > 1.15f || fabs(gz) > 10.0f) { // 큰 움직임이면 이번 보정은 쓸 수 없습니다.
+        Serial.println(F("ERR,KEEP_STILL_RETRY")); // 멈추지 않고 다시 보정한다고 알립니다.
+        calibrated = false; // 이번 시도는 실패로 표시합니다.
+        delay(500); // 사용자가 모형을 내려놓을 시간을 잠시 줍니다.
+        break; // 남은 샘플을 건너뛰고 처음부터 다시 시작합니다.
+      } // 움직임 처리 끝입니다.
+      sumZ += gz; // 일정한 영점 오차를 평균내기 위해 더합니다.
+      delay(5); // 센서 내부 갱신 주기에 맞춰 다음 샘플을 기다립니다.
+    } // 영점 측정 반복 끝입니다.
+  } // 보정 재시도 반복 끝입니다.
   gyroBiasZ = sumZ / CALIBRATION_SAMPLES; // 시작 시 정지 오차를 한 번만 보정합니다.
   Serial.println(F("INFO,READY")); // 이 줄 이후 정상 WME 샘플이 나옵니다.
   nextUs = micros(); // 첫 출력 주기를 시작합니다.
@@ -82,7 +92,10 @@ void setup() { // 보드가 켜지거나 리셋되면 한 번 실행합니다.
 void loop() { // 이후 계속 반복해서 측정값을 내보냅니다.
   uint32_t nowUs = micros(); // 현재 시각을 읽습니다.
   if ((int32_t)(nowUs - nextUs) < 0) { return; } // 아직 20ms 주기가 안 됐으면 기다립니다.
-  if ((uint32_t)(nowUs - nextUs) >= PERIOD_US) { haltSensor(F("SAMPLE_TIMING_FAILED")); } // 누락된 샘플을 몰아서 출력하지 않습니다.
+  if ((uint32_t)(nowUs - nextUs) >= PERIOD_US) { // 한 주기 이상 밀렸으면 멈추지 않고 주기를 다시 맞춥니다.
+    nextUs = nowUs; // 밀린 샘플을 몰아서 출력하지 않고 지금 시각부터 20ms 간격을 새로 잡습니다.
+    Serial.println(F("INFO,TIMING_RESYNC")); // 주기를 다시 맞췄다는 사실을 숨기지 않고 알립니다.
+  } // 주기 재설정 끝입니다. yaw는 실제 경과 시간으로 적분하므로 밀린 시간도 반영됩니다.
   nextUs += PERIOD_US; // 처리 시간과 별개로 일정한 20ms 간격을 유지합니다.
   float ax, ay, az, gz; // 이번 측정값을 담을 변수입니다.
   if (!readMotion(ax, ay, az, gz)) { haltSensor(F("I2C_READ_FAILED")); } // 실패 시 이전 값이나 0을 정상값처럼 보내지 않습니다.

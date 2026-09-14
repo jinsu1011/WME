@@ -1,0 +1,1271 @@
+openapi: 3.0.3
+info:
+  title: WME (We Make Experts) 사내 기술교육 플랫폼 API
+  version: 2.0.0
+  description: |
+    신입 기술자가 실장비 투입 전에 정렬·판단 실습을 반복하고, 매니저가 그 기록과 성취도를 확인하는 B2B 사내 기술교육 서비스의 API.
+
+    **기준**: 실제 서버 `web/backend/app/main.py` (FastAPI). 2026-09-14 실제 응답과 대조해 작성했다.
+
+    **표기**
+    - `[설계]` 태그(`x-implementation: design`) — 설계에는 있으나 시연 앱에는 아직 구현하지 않은 API. 시연 앱은 데모 로그인으로 역할을 전환한다.
+    - 응답 필드는 camelCase. DB 컬럼(snake_case)은 서버가 변환한다.
+    - 시각은 ISO8601 문자열.
+
+    **실시간 측정 (WebSocket, OpenAPI 로 표현하지 않음)** — `ws://localhost:8000/ws/attempts/{attemptId}`
+    - 서버 → 화면 `ready` : `{type, attemptId, source, inputDevice, tolerance{positionPx, rotationDeg}}`
+    - 화면 → 서버 `sample` : `{type, tMs, roll, pitch, waferX, waferY, waferTheta, quality}` — 초당 약 25회. 구조는 `components/schemas/Sample` 참고
+    - 서버 → 화면 `state` : `{type, tMs, dx, dy, dtheta, withinTolerance}` — 허용 범위 판정은 서버가 과정 설정값으로 한다
+    - 화면 → 서버 `confirm` → 서버 → 화면 `measured` : `{type, attempt}` (POST /attempts/{attemptId}/phase 의 confirmed 와 같은 일)
+    - 오류 `error` : `{type, message}`
+
+    **센서(교육용 모형 컨트롤러)** 는 서버를 거치지 않고 브라우저가 USB 로 직접 읽는다(Web Serial API). 그래서 센서 전용 API 는 없고, 조작 결과(웨이퍼 좌표)만 위 WebSocket 으로 기록된다. 센서가 없으면 키보드로 같은 실습이 된다.
+
+    **AI 피드백** — LLM 이 실패해도 답변과 규칙 기반 점수는 보존된다(503 + `answerPreserved: true`).
+
+    **데이터 모델과의 관계** — 응답의 배열 필드는 ERD(`WME-DB.dbml`, 논리 설계)의 하위 테이블 행이다.
+    예: `Course.steps[]` = course_steps, `Course.rubric[]` = rubric_criteria, `Enrollment.stepsCompleted` = enrollment_steps,
+    `Attempt.rubricScores[]` = attempt_rubric_scores, `Answer.orderedIds` = attempt_check_orders,
+    `Feedback.good/improve/cannotJudge` = feedback_items, `Feedback.eventIds` = feedback_evidence.
+servers:
+  - url: http://localhost:8000
+    description: 로컬 시연 서버
+tags:
+  - name: auth
+    description: '[설계] 로그인'
+  - name: users
+    description: 사용자
+  - name: courses
+    description: 교육 과정
+  - name: enrollments
+    description: 과정 배정·진도
+  - name: attempts
+    description: 실습 시도 (생성 → 정렬 확정 → 답변 제출)
+  - name: feedback
+    description: AI 피드백
+  - name: instructor
+    description: 매니저 화면
+  - name: system
+    description: 서버 상태
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: '[설계] 로그인'
+      description: |
+        아이디·비밀번호로 로그인하고 사용자 정보를 받는다. 역할(role)에 따라 신입사원 화면 / 매니저 화면으로 이동한다.
+        **시연 앱에는 구현하지 않았다.** 시연 앱은 데모 계정(신입사원 1/1, 매니저 2/2)으로 브라우저에서 역할만 전환한다.
+      operationId: postAuthLogin
+      x-implementation: design
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/users:
+    get:
+      tags: [users]
+      summary: 사용자 목록
+      description: 매니저 화면의 학습자 목록 등에 쓴다.
+      operationId: getUsers
+      parameters:
+        - name: role
+          in: query
+          required: false
+          description: 역할로 거른다
+          schema:
+            $ref: '#/components/schemas/UserRole'
+      responses:
+        '200':
+          description: 사용자 배열
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/users/{user_id}:
+    get:
+      tags: [users]
+      summary: 사용자 1명
+      description: 상단 이름·소속 표시, 학습자 상세 화면에 쓴다.
+      operationId: getUser
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: 사용자
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/courses:
+    get:
+      tags: [courses]
+      summary: 과정 목록
+      description: 과정 카탈로그·실습 목록에 쓴다. id 순.
+      operationId: getCourses
+      responses:
+        '200':
+          description: 과정 배열
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Course'
+
+  /api/courses/{course_id}:
+    get:
+      tags: [courses]
+      summary: 과정 1개
+      description: 대기방(진행 방법·확인 기준·준비물)과 실습 화면 설정(허용 오차·조작 안내·시나리오)에 쓴다.
+      operationId: getCourse
+      parameters:
+        - $ref: '#/components/parameters/CourseIdPath'
+      responses:
+        '200':
+          description: 과정
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/enrollments:
+    get:
+      tags: [enrollments]
+      summary: 배정 목록
+      description: 실습 목록(해야 할 / 완료한 실습)과 진도 표시에 쓴다. 진도율은 주지 않고 화면이 stepsCompleted 로 계산한다.
+      operationId: getEnrollments
+      parameters:
+        - $ref: '#/components/parameters/UserIdQuery'
+      responses:
+        '200':
+          description: 배정 배열
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Enrollment'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/enrollments/{enrollment_id}/progress:
+    patch:
+      tags: [enrollments]
+      summary: 단계 완료 기록
+      description: 과정 단계 하나를 완료(또는 취소)로 기록한다. status 는 서버가 다시 계산한다.
+      operationId: patchEnrollmentProgress
+      parameters:
+        - $ref: '#/components/parameters/EnrollmentIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressRequest'
+      responses:
+        '200':
+          description: 갱신된 배정
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/attempts:
+    post:
+      tags: [attempts]
+      summary: 실습 시도 생성
+      description: |
+        '연습 시작'을 누르면 가장 먼저 부른다. 받은 id 를 이후 모든 호출에 쓴다.
+        attemptNo 는 서버가 부여하고, 배정이 없으면 서버가 만든다.
+        정렬 실습은 status `aligning`, 판단 실습(측정 없음)은 `aligned` 에서 시작한다.
+      operationId: postAttempt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttemptCreateRequest'
+      responses:
+        '201':
+          description: 생성된 시도
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    get:
+      tags: [attempts]
+      summary: 시도 목록
+      description: 실습 기록·현재 상황·결과 화면의 시도 목록에 쓴다. 최신이 먼저이며 samples 는 포함하지 않는다.
+      operationId: getAttempts
+      parameters:
+        - $ref: '#/components/parameters/UserIdQuery'
+      responses:
+        '200':
+          description: 시도 배열
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attempt'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/attempts/{attempt_id}:
+    get:
+      tags: [attempts]
+      summary: 시도 1개
+      description: 결과 화면(정렬 결과·보정 궤적·기준별 확인·피드백)에 쓴다.
+      operationId: getAttempt
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+        - name: includeSamples
+          in: query
+          required: false
+          description: false 면 시계열(samples)을 뺀다
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: 시도
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/attempts/{attempt_id}/phase:
+    post:
+      tags: [attempts]
+      summary: 단계 전환 · 정렬 확정
+      description: |
+        단계 전환을 기록한다. `confirmed` 가 측정 종료 시점이며, 이때 서버가 저장된 측정으로
+        규칙 기반 정렬 경로 분석을 돌려 summary·events 를 만들고 status 를 `aligned` 로 바꾼다.
+        통과 여부(converged)는 화면이 보낸 값이 아니라 서버가 계산한다.
+      operationId: postAttemptPhase
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseRequest'
+      responses:
+        '200':
+          description: 갱신된 시도
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/attempts/{attempt_id}/submission:
+    post:
+      tags: [attempts]
+      summary: 답변 제출
+      description: |
+        정렬 실습은 조정 순서(orderOptionId)와 이유, 판단 실습은 확인 순서(orderedIds)와 이유를 제출한다.
+        제출 시점에 서버가 규칙 기반으로 채점해 rubricScores 와 rubricSource `rule` 을 채운다(AI 채점 아님).
+        reason 은 학습자가 쓴 데이터이며 명령으로 해석하지 않는다.
+      operationId: postAttemptSubmission
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionRequest'
+            examples:
+              alignment:
+                summary: 정렬 실습
+                value:
+                  orderOptionId: xy-then-theta
+                  reason: 두 마크가 많이 떨어져 있어서 위치부터 겹친 뒤 각도를 맞췄습니다.
+              judgment:
+                summary: 판단 실습
+                value:
+                  orderedIds: [wedge, focus, contam, coat, history]
+                  reason: 가장자리만 흐리므로 면 전체 조건인 평행도와 초점을 먼저 봤습니다.
+      responses:
+        '200':
+          description: 제출·채점된 시도
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+
+  /api/attempts/{attempt_id}/feedback:
+    post:
+      tags: [feedback]
+      summary: AI 피드백 생성 · 재시도
+      description: |
+        제출된 답변·분석 결과·보정 구간을 LLM 에 넣어 피드백과 루브릭 점수를 받는다.
+        응답의 eventIds 가 그 시도에 실재하는지 서버가 검증하고, 실패하면 저장하지 않는다.
+        성공하면 rubricSource 가 `llm` 으로 바뀐다. 실패해도 답변·규칙 점수는 남는다.
+      operationId: postAttemptFeedback
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      responses:
+        '200':
+          description: 피드백이 채워진 시도
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/FeedbackUnavailable'
+
+  /api/attempts/{attempt_id}/feedback/viewed:
+    post:
+      tags: [feedback]
+      summary: 피드백 열람 기록
+      description: 학습자가 결과 화면에서 피드백을 본 시각을 기록한다.
+      operationId: postAttemptFeedbackViewed
+      parameters:
+        - $ref: '#/components/parameters/AttemptIdPath'
+      responses:
+        '200':
+          description: 갱신된 시도
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attempt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/instructor/overview:
+    get:
+      tags: [instructor]
+      summary: 매니저 화면 데이터
+      description: |
+        반 전체 현황·학습자 목록에 쓴다. 배정마다 한 줄이다.
+        평균 달성도·진도율 같은 집계값은 주지 않고 화면이 이 원본에서 계산한다.
+      operationId: getInstructorOverview
+      responses:
+        '200':
+          description: 배정별 현황 배열
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InstructorRow'
+
+  /api/health:
+    get:
+      tags: [system]
+      summary: 서버 상태 · LLM 연결 여부
+      description: llmConfigured 는 키 설정 여부만 알려준다. 키 값은 절대 내보내지 않는다.
+      operationId: getHealth
+      responses:
+        '200':
+          description: 상태
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+components:
+  parameters:
+    UserIdPath:
+      name: user_id
+      in: path
+      required: true
+      description: 사용자 id
+      schema:
+        type: string
+        example: u-1
+    CourseIdPath:
+      name: course_id
+      in: path
+      required: true
+      description: 과정 id
+      schema:
+        type: string
+        example: photo-align
+    EnrollmentIdPath:
+      name: enrollment_id
+      in: path
+      required: true
+      description: 배정 id
+      schema:
+        type: string
+        example: e-u-1-stage
+    AttemptIdPath:
+      name: attempt_id
+      in: path
+      required: true
+      description: 시도 id
+      schema:
+        type: string
+        example: e-u-1-stage-a3
+    UserIdQuery:
+      name: userId
+      in: query
+      required: false
+      description: 이 사용자 것만. 없으면 전체
+      schema:
+        type: string
+        example: u-1
+
+  responses:
+    Unauthorized:
+      description: '[설계] 아이디 또는 비밀번호가 맞지 않음'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: 아이디 또는 비밀번호가 맞지 않습니다.
+    NotFound:
+      description: 대상 없음 (사용자·과정·배정·시도)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: 시도를 찾을 수 없습니다.
+    Conflict:
+      description: |
+        지금 상태에서 할 수 없음
+        - 준비 중 과정으로 시도 생성: `아직 실습할 수 없는 과정입니다.`
+        - 정렬 확정 전 제출 / 이미 확정된 시도 재확정: `'{status}' 상태에서는 ... 할 수 없습니다.`
+        - 제출 전 피드백 요청: `답변을 먼저 제출해야 피드백을 만들 수 있습니다.`
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: "'aligning' 상태에서는 답변을 제출할 수 없습니다."
+    ValidationFailed:
+      description: |
+        요청 값이 규칙에 맞지 않음
+        - 형식 오류(필수 값 누락, 허용되지 않은 값): FastAPI 검증 형식 `ValidationError`
+        - 과정에 없는 단계·조정 순서, 판단 실습 항목 누락·중복·없는 항목, 측정 데이터 없음: `Error` 형식
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/Error'
+              - $ref: '#/components/schemas/ValidationError'
+          example:
+            detail: '이 과정에 없는 조정 순서입니다: diagonal'
+    FeedbackUnavailable:
+      description: LLM 호출 실패 또는 응답 검증 실패 (키 미설정 포함). 답변과 규칙 점수는 보존된다.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FeedbackError'
+
+  schemas:
+    # ───── 공통 ─────
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          description: 사람이 읽는 오류 문구
+    ValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+              msg:
+                type: string
+              type:
+                type: string
+    FeedbackError:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+              description: 분류된 실패 문구 (API 키·원본 예외 메시지는 포함하지 않음)
+            detail:
+              type: array
+              items: {}
+            retryable:
+              type: boolean
+              description: 다시 시도하면 될 수 있는지
+            answerPreserved:
+              type: boolean
+              description: 학습자 답변이 서버에 그대로 있는지
+    ControlHint:
+      type: object
+      required: [keys, effect]
+      properties:
+        keys:
+          type: string
+          example: Q / E
+        effect:
+          type: string
+          example: 회전(θ) 조정
+
+    # ───── 코드값 ─────
+    UserRole:
+      type: string
+      enum: [learner, instructor]
+      description: learner = 신입사원, instructor = 매니저
+    ExerciseType:
+      type: string
+      enum: [alignment, judgment]
+    AttemptStatus:
+      type: string
+      enum: [aligning, aligned, submitted, feedback_ready, feedback_failed]
+    InputDevice:
+      type: string
+      enum: [keyboard, model_controller]
+      description: keyboard = 키보드 조작(기본) / model_controller = 센서를 붙인 교육용 모형 컨트롤러(선택)
+
+    # ───── 인증 [설계] ─────
+    LoginRequest:
+      type: object
+      required: [loginId, password]
+      properties:
+        loginId:
+          type: string
+          example: '1'
+        password:
+          type: string
+          format: password
+          example: '1'
+    LoginResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+
+    # ───── 사용자 ─────
+    User:
+      type: object
+      required: [id, displayName, role, department]
+      properties:
+        id:
+          type: string
+          example: u-1
+        displayName:
+          type: string
+          example: 김진수
+        role:
+          $ref: '#/components/schemas/UserRole'
+        department:
+          type: string
+          example: 장비기술1팀 · 신입
+
+    # ───── 과정 ─────
+    Course:
+      type: object
+      description: 과정. DB 의 content_json 을 서버가 평평하게 풀어서 준다.
+      required: [id, title, subtitle, description, availability, exerciseType, estimatedMinutes,
+                 objectives, prerequisites, steps, orderOptions, rubric, version]
+      properties:
+        id:
+          type: string
+          example: photo-align
+        title:
+          type: string
+          example: 포토공정 입문 — 마스크·웨이퍼 정렬 실습
+        subtitle:
+          type: string
+        description:
+          type: string
+        availability:
+          type: string
+          enum: [available, preview, coming_soon]
+        exerciseType:
+          $ref: '#/components/schemas/ExerciseType'
+        estimatedMinutes:
+          type: integer
+          example: 30
+        objectives:
+          type: array
+          items:
+            type: string
+        prerequisites:
+          type: array
+          items:
+            type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseStep'
+        orderOptions:
+          type: array
+          description: 정렬 실습의 조정 순서 선택지 (판단 실습은 빈 배열)
+          items:
+            $ref: '#/components/schemas/OrderOption'
+        rubric:
+          type: array
+          description: 평가 기준 4개. 배열 순서가 Attempt.rubricScores 순서
+          items:
+            $ref: '#/components/schemas/RubricCriterion'
+        alignment:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/AlignmentSettings'
+        control:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ControlSettings'
+        scenario:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Scenario'
+        version:
+          type: string
+          example: course-2.0.0
+        content:
+          type: object
+          additionalProperties: true
+          description: 서버 내부 검증용 원본(content_json). 화면은 쓰지 않는다
+    CourseStep:
+      type: object
+      required: [id, title, summary]
+      properties:
+        id:
+          type: string
+          example: align
+        title:
+          type: string
+          example: 정렬 실습
+        summary:
+          type: string
+    OrderOption:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          example: xy-then-theta
+        label:
+          type: string
+        hint:
+          type: string
+    RubricCriterion:
+      type: object
+      required: [short, text]
+      properties:
+        short:
+          type: string
+          example: 정렬 정확도
+        text:
+          type: string
+          example: 최종 오차가 과정에서 정한 허용 범위 안에 들어왔는가
+    AlignmentSettings:
+      type: object
+      description: 정렬 실습 화면 설정. 허용 오차는 교육 과정 설정값이며 실제 장비의 정렬 정밀도가 아니다.
+      properties:
+        tolerancePx:
+          type: number
+          example: 4
+        toleranceDeg:
+          type: number
+          example: 1
+        umPerPx:
+          type: number
+          example: 25
+        startOffset:
+          type: object
+          properties:
+            x:
+              type: number
+              example: 62
+            y:
+              type: number
+              example: -44
+            theta:
+              type: number
+              example: 6.5
+        controls:
+          type: array
+          description: 조작 안내 (방향키·Q/E·Shift)
+          items:
+            $ref: '#/components/schemas/ControlHint'
+        tiltControls:
+          type: array
+          description: 키보드 모드 기울기 조작 안내 (W/S·A/D)
+          items:
+            $ref: '#/components/schemas/ControlHint'
+        controllerNotice:
+          type: string
+          description: 모형 컨트롤러는 교육용이라는 고지
+        markLabels:
+          type: object
+          properties:
+            fixed:
+              type: string
+              example: 마스크 마크
+            moving:
+              type: string
+              example: 웨이퍼 마크
+        fieldRadius:
+          type: number
+          example: 132
+        materials:
+          type: array
+          items:
+            type: string
+    ControlSettings:
+      type: object
+      description: 입력 → 이동 속도 변환 계수. 계산은 화면이 하고 계수는 과정 설정값이다.
+      properties:
+        deadZoneDeg:
+          type: number
+          example: 2.0
+        gainPxPerDeg:
+          type: number
+          example: 12.0
+        maxSpeedPx:
+          type: number
+          example: 160.0
+        yawDeadZoneDeg:
+          type: number
+          example: 3.0
+        yawGainDegPerDeg:
+          type: number
+          example: 2.5
+        maxSpeedDeg:
+          type: number
+          example: 30.0
+        keyboard:
+          type: object
+          properties:
+            movePxPerSec:
+              type: number
+              example: 90.0
+            rotateDegPerSec:
+              type: number
+              example: 22.0
+            fineFactor:
+              type: number
+              example: 0.25
+    Scenario:
+      type: object
+      description: 판단 실습 상황. recommendedOrder 와 rationale 은 제출 전 화면에 보여주지 않는다.
+      required: [situation, observations, checkItems, recommendedOrder]
+      properties:
+        situation:
+          type: string
+          example: 노광 후 검사에서 웨이퍼 가장자리 쪽 패턴이 흐리게 나왔습니다. 중심부는 정상입니다.
+        observations:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+                example: 패턴 상태
+              value:
+                type: string
+                example: 중심부 정상 · 가장자리 흐림
+        checkItems:
+          type: array
+          description: 확인 항목 (권장 순서와 다른 순서로 준다)
+          items:
+            type: object
+            required: [id, label]
+            properties:
+              id:
+                type: string
+                example: wedge
+              label:
+                type: string
+                example: 마스크·웨이퍼 평행도(웨지) 점검
+        recommendedOrder:
+          type: array
+          items:
+            type: string
+          example: [wedge, focus, contam, coat, history]
+        orderNote:
+          type: string
+          description: 권장 순서는 이 과정의 기준이며 모든 현장의 정답이 아니라는 고지
+        rationale:
+          type: string
+
+    # ───── 배정 ─────
+    Enrollment:
+      type: object
+      required: [id, userId, courseId, status, stepsCompleted]
+      properties:
+        id:
+          type: string
+          example: e-u-1-stage
+        userId:
+          type: string
+          example: u-1
+        courseId:
+          type: string
+          example: photo-align
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        stepsCompleted:
+          type: array
+          items:
+            type: string
+          example: [concept, marks, align, submit]
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ProgressRequest:
+      type: object
+      required: [stepId]
+      properties:
+        stepId:
+          type: string
+          description: 그 과정 steps 에 있는 id
+          example: align
+        completed:
+          type: boolean
+          default: true
+          description: false 면 완료 취소
+
+    # ───── 시도 ─────
+    AttemptCreateRequest:
+      type: object
+      required: [userId, courseId]
+      properties:
+        userId:
+          type: string
+          example: u-1
+        courseId:
+          type: string
+          example: photo-align
+        source:
+          type: string
+          enum: [mock, replay, live]
+          default: live
+        inputDevice:
+          $ref: '#/components/schemas/InputDevice'
+    PhaseRequest:
+      type: object
+      required: [phase, tMs]
+      properties:
+        phase:
+          type: string
+          enum: [idle, aligning, confirmed, submitted]
+        tMs:
+          type: integer
+          minimum: 0
+          description: 시도 시작부터 경과 밀리초
+          example: 13180
+    SubmissionRequest:
+      type: object
+      required: [reason]
+      description: 정렬 실습은 orderOptionId, 판단 실습은 orderedIds 가 필요하다.
+      properties:
+        orderOptionId:
+          type: string
+          nullable: true
+          description: '[정렬] 그 과정 orderOptions 의 id'
+          example: xy-then-theta
+        orderedIds:
+          type: array
+          nullable: true
+          description: '[판단] checkItems id 전부를 한 번씩, 확인할 순서대로'
+          items:
+            type: string
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: 왜 그 순서로 했는지
+    Attempt:
+      type: object
+      required: [id, enrollmentId, userId, courseId, attemptNo, source, inputDevice, status,
+                 startedAt, phaseMarkers, feedbackStatus, durationSec,
+                 courseVersion, modelVersion, settingsVersion, events]
+      properties:
+        id:
+          type: string
+          example: e-u-1-stage-a3
+        enrollmentId:
+          type: string
+        userId:
+          type: string
+        courseId:
+          type: string
+        attemptNo:
+          type: integer
+          example: 3
+        source:
+          type: string
+          enum: [mock, replay, live]
+        inputDevice:
+          $ref: '#/components/schemas/InputDevice'
+        status:
+          $ref: '#/components/schemas/AttemptStatus'
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        phaseMarkers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhaseMarker'
+        summary:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/AlignmentSummary'
+            - $ref: '#/components/schemas/JudgmentSummary'
+        answer:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Answer'
+        feedback:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Feedback'
+        feedbackStatus:
+          type: string
+          enum: [none, pending, ready, failed]
+        feedbackError:
+          type: string
+          nullable: true
+        feedbackViewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rubricScores:
+          type: array
+          nullable: true
+          description: 기준별 0(미충족)·1(부분)·2(충족). Course.rubric 순서
+          items:
+            type: integer
+            minimum: 0
+            maximum: 2
+          example: [2, 2, 1, 2]
+        rubricSource:
+          type: string
+          enum: [rule, llm]
+          nullable: true
+          description: rule = 규칙 기반 임시 채점(AI 채점 아님) / llm = 모델 채점
+        rubricReasons:
+          type: array
+          description: 규칙 채점일 때만 온다. 기준별 설명
+          items:
+            type: string
+        durationSec:
+          type: integer
+        courseVersion:
+          type: string
+          example: course-2.0.0
+        modelVersion:
+          type: string
+          example: rule-align-1.0.0
+        settingsVersion:
+          type: string
+          example: align-settings-1.0.0
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        samples:
+          type: array
+          description: 시계열. GET /api/attempts/{attempt_id} 에서 includeSamples=true 일 때만
+          items:
+            $ref: '#/components/schemas/Sample'
+    PhaseMarker:
+      type: object
+      required: [phase, tMs]
+      properties:
+        phase:
+          type: string
+          enum: [idle, aligning, confirmed, submitted]
+        tMs:
+          type: integer
+    AlignmentSummary:
+      type: object
+      description: 정렬 실습 분석 결과 (서버 계산)
+      properties:
+        finalDx:
+          type: number
+          example: 1.2
+        finalDy:
+          type: number
+          example: -0.8
+        finalDTheta:
+          type: number
+          example: 0.3
+        durationMs:
+          type: integer
+        adjustmentCount:
+          type: integer
+        overshootCount:
+          type: integer
+        converged:
+          type: boolean
+          description: 허용 범위 안에 들어왔는지 (서버가 계산)
+        pathAnalysis:
+          type: object
+          additionalProperties: true
+          description: 수렴 순서·축별 과잉 보정·축 간섭 구간 등
+          properties:
+            finalPositionError:
+              type: number
+            convergence:
+              type: object
+              properties:
+                order:
+                  type: string
+                  enum: [position_first, rotation_first, together, not_converged, unknown]
+                positionSettledMs:
+                  type: integer
+                  nullable: true
+                rotationSettledMs:
+                  type: integer
+                  nullable: true
+                monotonicRatio:
+                  type: number
+            overshootByAxis:
+              type: object
+              properties:
+                x:
+                  type: integer
+                y:
+                  type: integer
+                theta:
+                  type: integer
+            axisInterferenceEventIds:
+              type: array
+              items:
+                type: string
+            analyzerVersion:
+              type: string
+        scoringMetrics:
+          type: object
+          additionalProperties: true
+          description: 채점 규칙이 읽는 평평한 지표
+    JudgmentSummary:
+      type: object
+      description: 판단 실습 분석 결과 (제출 시 서버 계산)
+      properties:
+        durationMs:
+          type: integer
+        scoringMetrics:
+          type: object
+          properties:
+            firstPickRank:
+              type: integer
+              description: 내가 1순위로 고른 항목이 권장 순서에서 몇 번째인지
+            orderDistance:
+              type: integer
+              description: 내 순서와 권장 순서의 차이
+            top3Overlap:
+              type: integer
+              description: 상위 3개 겹침 수
+            answerLength:
+              type: integer
+            durationMs:
+              type: integer
+            passed:
+              type: boolean
+    Answer:
+      type: object
+      required: [reason, submittedAt]
+      properties:
+        orderOptionId:
+          type: string
+          description: '[정렬]'
+        orderedIds:
+          type: array
+          description: '[판단]'
+          items:
+            type: string
+        reason:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+    Feedback:
+      type: object
+      properties:
+        generatedBy:
+          type: string
+          description: llm = 모델 생성 / mock = 규칙 기반 샘플
+          example: mock
+        good:
+          type: array
+          items:
+            type: string
+        improve:
+          type: array
+          items:
+            type: string
+        eventIds:
+          type: array
+          description: 근거 보정 구간 id (그 시도에 실재하는 id 만 저장)
+          items:
+            type: string
+        nextStep:
+          type: string
+        cannotJudge:
+          type: array
+          description: 기록만으로 판단할 수 없는 것
+          items:
+            type: string
+        generatedAt:
+          type: string
+          format: date-time
+    Event:
+      type: object
+      required: [id, attemptId, startMs, endMs, type]
+      properties:
+        id:
+          type: string
+        attemptId:
+          type: string
+        startMs:
+          type: integer
+        endMs:
+          type: integer
+        type:
+          type: string
+          enum: [adjustment, overshoot, manual]
+        axis:
+          type: string
+          description: 주로 움직인 축
+          example: xy
+        metrics:
+          type: object
+          additionalProperties: true
+          description: 구간 지표 (errorBefore, errorAfter, dominantAxis, movedX, movedY, movedTheta, axisInterference, overshootAmount 등)
+    Sample:
+      type: object
+      description: 정렬 실습 시계열 한 점. WebSocket sample 메시지와 같은 구조(dx·dy·dTheta 는 응답에만)
+      required: [tMs, roll, pitch, waferX, waferY, waferTheta]
+      properties:
+        tMs:
+          type: integer
+        roll:
+          type: number
+          description: 컨트롤러 기울기(도). 키보드면 0
+        pitch:
+          type: number
+        waferX:
+          type: number
+          description: 마스크 마크 기준 웨이퍼 위치(px)
+        waferY:
+          type: number
+        waferTheta:
+          type: number
+          description: 웨이퍼 회전(도)
+        dx:
+          type: number
+        dy:
+          type: number
+        dTheta:
+          type: number
+        quality:
+          type: string
+          enum: [ok, gap]
+
+    # ───── 매니저 ─────
+    InstructorRow:
+      type: object
+      required: [user, courseId, enrollment, attemptCount, needsReview]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        courseId:
+          type: string
+        enrollment:
+          $ref: '#/components/schemas/Enrollment'
+        attemptCount:
+          type: integer
+        latestAttempt:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Attempt'
+        needsReview:
+          type: boolean
+          description: 최신 시도의 AI 피드백이 실패했으면 true
+
+    # ───── 시스템 ─────
+    Health:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        llmConfigured:
+          type: boolean
+          description: LLM 키 설정 여부 (키 값은 내보내지 않음)
+        courseVersion:
+          type: string
+        modelVersion:
+          type: string
+        settingsVersion:
+          type: string

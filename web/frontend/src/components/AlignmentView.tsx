@@ -129,19 +129,34 @@ export function ErrorReadout({
   dTheta,
   settings,
   within,
+  positionFixed = false,
 }: {
   dx: number
   dy: number
   dTheta: number
   settings: AlignmentSettings
   within: boolean
+  /** 센서 모드 — 위치를 가운데에 고정해 둔 것이라 '맞췄다'로 표시하지 않는다 */
+  positionFixed?: boolean
 }) {
   const posOk = positionError(dx, dy) <= settings.tolerancePx
   const rotOk = Math.abs(dTheta) <= settings.toleranceDeg
   return (
     <div className="grid grid-cols-3 gap-2">
-      <Cell label="X 오차" value={`${dx >= 0 ? '+' : ''}${dx.toFixed(1)}`} unit="px" ok={posOk} />
-      <Cell label="Y 오차" value={`${dy >= 0 ? '+' : ''}${dy.toFixed(1)}`} unit="px" ok={posOk} />
+      <Cell
+        label="X 오차"
+        value={`${dx >= 0 ? '+' : ''}${dx.toFixed(1)}`}
+        unit="px"
+        ok={posOk}
+        fixed={positionFixed}
+      />
+      <Cell
+        label="Y 오차"
+        value={`${dy >= 0 ? '+' : ''}${dy.toFixed(1)}`}
+        unit="px"
+        ok={posOk}
+        fixed={positionFixed}
+      />
       <Cell
         label="회전 오차"
         value={`${dTheta >= 0 ? '+' : ''}${dTheta.toFixed(1)}`}
@@ -149,7 +164,15 @@ export function ErrorReadout({
         ok={rotOk}
       />
       <div className="col-span-3 text-[11px] font-medium">
-        {within ? (
+        {positionFixed ? (
+          rotOk ? (
+            <span className="text-ok-500">회전 오차가 허용 범위 안입니다 — 위치는 가운데 고정</span>
+          ) : (
+            <span className="text-slate-400">
+              회전 오차 {Math.abs(dTheta).toFixed(1)}° (허용 ±{settings.toleranceDeg}°) — 위치는 가운데 고정
+            </span>
+          )
+        ) : within ? (
           <span className="text-ok-500">허용 오차 안 — 정렬을 확정할 수 있습니다</span>
         ) : (
           <span className="text-slate-400">
@@ -166,24 +189,31 @@ function Cell({
   value,
   unit,
   ok,
+  fixed = false,
 }: {
   label: string
   value: string
   unit: string
   ok: boolean
+  /** 조작 대상이 아니라 고정된 값. 중립 색으로 두고 '고정'이라고 적는다 */
+  fixed?: boolean
 }) {
   return (
     <div
       className={`rounded-lg border px-2.5 py-2 ${
-        ok ? 'border-ok-500/30 bg-ok-50/60' : 'border-slate-200 bg-white'
+        !fixed && ok ? 'border-ok-500/30 bg-ok-50/60' : 'border-slate-200 bg-white'
       }`}
     >
       <div className="text-[10px] text-slate-400">{label}</div>
       <div className="mt-0.5 flex items-baseline gap-0.5">
-        <span className="text-[17px] font-bold tabular-nums text-slate-900">{value}</span>
+        <span
+          className={`text-[17px] font-bold tabular-nums ${fixed ? 'text-slate-400' : 'text-slate-900'}`}
+        >
+          {value}
+        </span>
         <span className="text-[11px] text-slate-400">{unit}</span>
       </div>
-      <div className="text-[10px] text-slate-400">{ok ? '기준 안' : '기준 밖'}</div>
+      <div className="text-[10px] text-slate-400">{fixed ? '고정' : ok ? '기준 안' : '기준 밖'}</div>
     </div>
   )
 }

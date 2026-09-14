@@ -19,7 +19,7 @@ import {
   positionError,
   thinForDraw,
 } from '@/lib/alignment'
-import { KeyboardSource, TiltSource, ZERO_VELOCITY, mappingFromControl, speedFromControl } from '@/input'
+import { KeyboardSource, TiltSource, mappingFromControl, speedFromControl } from '@/input'
 import type { TiltAttitude, TiltSource as TiltSourceType } from '@/input'
 import { ControllerPanel } from '@/components/ControllerPanel'
 import { AlignmentStage3D } from '@/components/AlignmentStage3D'
@@ -28,7 +28,12 @@ import { CLEAR_EXPOSURE_EVENT, PLAY_EXPOSURE_EVENT } from '@/three/alignmentScen
 import {
   CONTROLLER_TEXT,
   EXPOSURE_TEXT,
+  LEVEL_EXIT_MARGIN_DEG,
   LEVEL_TOLERANCE_DEG,
+  SENSOR_AXIS_SIGN,
+  SENSOR_SMOOTHING_SEC,
+  SUCCESS_HOLD_MS,
+  SUCCESS_TEXT,
 } from '@/data/controllerSettings'
 import { useDemo } from '@/lib/demo'
 
@@ -36,6 +41,18 @@ type Phase = 'ready' | 'starting' | 'aligning' | 'confirmed'
 
 /** 서버에 표본을 보내는 주기(ms). 초당 25회. 매 프레임(60fps) 보내면 과하다. */
 const SEND_EVERY_MS = 40
+
+/** 정렬 유지 성공 판정 상태 */
+interface HoldState {
+  /** 유지 진행률 0~1 */
+  progress: number
+  /** 유지 시간을 채워 실습 성공을 띄웠는지(처음부터 다시 하기 전까지 유지) */
+  success: boolean
+  /** 성공 직후 3초 — 깜빡임 표시용 */
+  justSucceeded: boolean
+}
+
+const NO_HOLD: HoldState = { progress: 0, success: false, justSucceeded: false }
 
 /**
  * 정렬 실습(exerciseType: alignment).
@@ -69,6 +86,8 @@ export function AlignmentExercise({ course }: { course: Course }) {
     hasData: false,
     lastAt: 0,
   })
+  const [sensorInside, setSensorInside] = useState(false)
+  const [hold, setHold] = useState<HoldState>(NO_HOLD)
 
   // 매 프레임 바뀌는 값은 다시 그리지 않아도 되므로 ref 에 둔다.
   const posRef = useRef({ ...settings.startOffset })
@@ -78,6 +97,15 @@ export function AlignmentExercise({ course }: { course: Course }) {
    */
   const keyTiltRef = useRef({ roll: 0, pitch: 0 })
   const [keyTilt, setKeyTilt] = useState({ roll: 0, pitch: 0 })
+  /**
+   * 센서 모드 회전 — 모형을 비튼 각도를 그대로 따른다.
+   * θ = 시작 오차 + (지금 비틀기 − 기준 비틀기) + 미세조정.
+   * 기준은 정렬을 시작할 때(또는 영점을 바꿀 때) 그 순간의 비틀기로 다시 잡아 θ 가 튀지 않게 한다.
+   */
+  const yawBaseRef = useRef<number | null>(null)
+  const thetaTrimRef = useRef(0)
+  /** 정렬 유지 판정. since = 범위 안에 들어온 시각(0 이면 밖), done = 성공 */
+  const successRef = useRef({ since: 0, done: false, doneAt: 0 })
   /** 노광·현상 연출 단계. 정렬을 확정한 뒤에만 진행한다. */
   const [exposureStage, setExposureStage] = useState<ExposureStage>(null)
   const stageHostRef = useRef<HTMLDivElement | null>(null)
@@ -92,7 +120,16 @@ export function AlignmentExercise({ course }: { course: Course }) {
     [course.control],
   )
   const tilt = useMemo(
-    () => new TiltSource(course.control ? mappingFromControl(course.control) : {}),
+    () =>
+      new TiltSource(course.control ? mappingFromControl(course.control) : {}, {
+        axisSign: SENSOR_AXIS_SIGN,
+        smoothingSec: SENSOR_SMOOTHING_SEC,
+        toleranceDeg: LEVEL_TOLERANCE_DEG,
+        exitMarginDeg: LEVEL_EXIT_MARGIN_DEG,
+        // 수평은 들어오는 즉시 판정한다. 유지 시간은 '정렬 유지 → 실습 성공'에서 따로 센다.
+        holdMs: 0,
+        releaseDeg: LEVEL_TOLERANCE_DEG + LEVEL_EXIT_MARGIN_DEG,
+      }),
     [course.control],
   )
   /** 컨트롤러 상태는 클래스 안에서 바뀌므로, 화면이 다시 그려지도록 상태로 복사해 둔다. */
@@ -107,12 +144,14 @@ export function AlignmentExercise({ course }: { course: Course }) {
   const sensorMode = inputDevice === 'model_controller'
   // 수평(평행) 허용 범위. ⚠️ 서버 과정 설정에 아직 없어 상수를 쓴다(data/controllerSettings.ts).
   const levelTolerance = LEVEL_TOLERANCE_DEG
-  const level = sensorMode
-    ? tilt.isLevel(levelTolerance)
-    : Math.abs(keyTilt.roll) <= levelTolerance && Math.abs(keyTilt.pitch) <= levelTolerance
+  const keyboardLevel =
+    Math.abs(keyTilt.roll) <= levelTolerance && Math.abs(keyTilt.pitch) <= levelTolerance
+  /** 지금 수평 범위 안인지 */
+  const levelNow = sensorMode ? sensorInside : keyboardLevel
   const ready = sensorMode ? tiltState.available : keyboard.available
 
   const within = isWithinTolerance(error.dx, error.dy, error.dTheta, settings)
+  const thetaOk = Math.abs(error.dTheta) <= settings.toleranceDeg
 
   // 매 프레임 바뀌는 자세를 화면에는 초당 10회만 반영한다(읽기에 충분하다).
   useEffect(() => {
@@ -127,7 +166,10 @@ export function AlignmentExercise({ course }: { course: Course }) {
       })
     const unsubscribe = tilt.subscribe(sync)
     sync()
-    const timer = window.setInterval(() => setAttitude(tilt.attitude()), 100)
+    const timer = window.setInterval(() => {
+      setAttitude(tilt.attitude())
+      setSensorInside(tilt.level().inside)
+    }, 100)
     return () => {
       unsubscribe()
       window.clearInterval(timer)
@@ -141,22 +183,34 @@ export function AlignmentExercise({ course }: { course: Course }) {
     ;(window as unknown as { __wmeTilt?: TiltSourceType }).__wmeTilt = tilt
   }, [tilt])
 
+  // 실습 화면을 떠나면 포트를 놓는다. 안 놓으면 다시 들어왔을 때 "이미 열려 있음"으로 연결이 막힌다.
+  useEffect(() => () => void tilt.disconnect(), [tilt])
+
   /**
    * 3D 뷰가 매 프레임 직접 읽는 자세.
    * 리액트 상태(`error`)는 채널 응답을 기다리므로, 즉시 반응이 필요한 3D 는 로컬 위치를 본다.
+   * 링 색·마스크 내려옴은 **정렬 유지 성공**에만 반응한다(수평만으로는 초록이 되지 않는다).
    */
   function readPose(): StagePose {
     const p = posRef.current
     const a = sensorMode ? tilt.attitude() : null
     const roll = sensorMode ? (a?.hasData ? a.roll : 0) : keyTiltRef.current.roll
     const pitch = sensorMode ? (a?.hasData ? a.pitch : 0) : keyTiltRef.current.pitch
+    const s = successRef.current
+    const progress = s.done
+      ? 1
+      : s.since
+        ? Math.min(1, (performance.now() - s.since) / SUCCESS_HOLD_MS)
+        : 0
     return {
       x: p.x,
       y: p.y,
       theta: p.theta,
       roll,
       pitch,
-      level: Math.abs(roll) <= levelTolerance && Math.abs(pitch) <= levelTolerance,
+      level: s.done,
+      levelProgress: progress,
+      levelConfirmed: s.done,
     }
   }
 
@@ -167,10 +221,25 @@ export function AlignmentExercise({ course }: { course: Course }) {
       ?.dispatchEvent(new CustomEvent(eventName, { detail }))
   }
 
-  /** 회전 미세조정 버튼 — 센서 yaw 의 드리프트가 확인되기 전까지 남겨 두는 백업 입력이다. */
+  /** 회전 미세조정 버튼 — 센서 yaw 의 드리프트를 손으로 보정하는 백업 입력이다. */
   function nudgeTheta(delta: number) {
     if (phase !== 'aligning') return
-    posRef.current.theta = Math.max(-45, Math.min(45, posRef.current.theta + delta))
+    if (sensorMode) {
+      thetaTrimRef.current += delta
+    } else {
+      posRef.current.theta = Math.max(-45, Math.min(45, posRef.current.theta + delta))
+    }
+  }
+
+  /** 영점을 바꾸면 비틀기 기준도 다시 잡는다. 다음 프레임에서 지금 θ 를 이어받으므로 튀지 않는다. */
+  function zeroSensor() {
+    tilt.setZero()
+    yawBaseRef.current = null
+  }
+
+  function clearSensorZero() {
+    tilt.clearZero()
+    yawBaseRef.current = null
   }
 
   function reset() {
@@ -181,6 +250,10 @@ export function AlignmentExercise({ course }: { course: Course }) {
     posRef.current = { ...settings.startOffset }
     keyTiltRef.current = { roll: 0, pitch: 0 }
     setKeyTilt({ roll: 0, pitch: 0 })
+    yawBaseRef.current = null
+    thetaTrimRef.current = 0
+    successRef.current = { since: 0, done: false, doneAt: 0 }
+    setHold(NO_HOLD)
     samplesRef.current = []
     setAttemptId(null)
     setChannelKind(null)
@@ -225,11 +298,10 @@ export function AlignmentExercise({ course }: { course: Course }) {
     }
   }
 
-  // 실습 루프 — 컨트롤러 속도를 시간만큼 곱해 위치에 더하고, 표본을 채널로 보낸다.
+  // 실습 루프 — 컨트롤러 입력을 위치에 반영하고, 표본을 채널로 보내고, 정렬 유지를 센다.
   useEffect(() => {
     if (phase !== 'aligning' || !attemptId) return
 
-    // X/Y 는 어느 모드에서도 키보드가 담당한다.
     keyboard.start()
     // mock 채널은 onReady 를 즉시 부르므로, 여기서 channel 변수를 참조하면 안 된다
     // (아직 만들어지기 전이다). 연결 종류는 채널을 만든 뒤에 따로 표시한다.
@@ -259,45 +331,78 @@ export function AlignmentExercise({ course }: { course: Course }) {
     const startTime = performance.now()
     let prev = startTime
     let lastSend = -Infinity
+    let lastUi = -Infinity
     samplesRef.current = []
+    // 정렬 유지는 시작할 때마다 처음부터 센다.
+    successRef.current = { since: 0, done: false, doneAt: 0 }
+    setHold(NO_HOLD)
+    // 센서 모드는 X/Y 를 가운데에 고정한다. 센서는 회전 3축만 잴 수 있어 위치를 만들 수 없다.
+    if (sensorMode) {
+      posRef.current.x = 0
+      posRef.current.y = 0
+    }
+    // 비틀기 기준은 첫 센서 값에서 다시 잡는다(지금 θ 를 이어받는다).
+    yawBaseRef.current = null
 
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - prev) / 1000)
       prev = now
-      // 키보드 기울기(센서가 없을 때). 누르고 있는 동안 점점 기울고 놓으면 그대로 남는다.
-      if (!sensorMode) {
+      const k = keyboard.read()
+      const p = posRef.current
+      let levelOk: boolean
+
+      if (sensorMode) {
+        // 센서 모드 — 위치 고정, 회전은 비튼 각도를 그대로 따른다. 수평은 성공 조건이지 잠금이 아니다.
+        levelOk = tilt.level().inside
+        thetaTrimRef.current += k.vTheta * dt // Q/E 는 미세조정으로 쓴다
+        const a = tilt.attitude()
+        if (a.hasData) {
+          if (yawBaseRef.current === null) {
+            yawBaseRef.current = a.yaw
+            thetaTrimRef.current = p.theta - settings.startOffset.theta
+          }
+          p.theta = settings.startOffset.theta + (a.yaw - yawBaseRef.current) + thetaTrimRef.current
+        }
+        p.x = 0
+        p.y = 0
+      } else {
+        // 키보드 기울기(센서가 없을 때). 누르고 있는 동안 점점 기울고 놓으면 그대로 남는다.
         const kt = keyboard.readTilt()
         if (kt.vRoll !== 0 || kt.vPitch !== 0) {
           const next = keyTiltRef.current
           next.roll = Math.max(-25, Math.min(25, next.roll + kt.vRoll * dt))
           next.pitch = Math.max(-25, Math.min(25, next.pitch + kt.vPitch * dt))
         }
-      }
-
-      // 수평이 확보된 동안에만 회전 입력이 반영된다. 센서·키보드 모두 같은 규칙이다.
-      const levelNow = sensorMode
-        ? tilt.isLevel(levelTolerance)
-        : Math.abs(keyTiltRef.current.roll) <= levelTolerance &&
+        // 키보드 모드는 수평이 확보된 동안에만 회전 입력이 반영된다.
+        levelOk =
+          Math.abs(keyTiltRef.current.roll) <= levelTolerance &&
           Math.abs(keyTiltRef.current.pitch) <= levelTolerance
-      const k = keyboard.read()
-      const t = sensorMode && levelNow ? tilt.read() : ZERO_VELOCITY
-      const v = {
-        vx: k.vx,
-        vy: k.vy,
-        vTheta: (levelNow ? k.vTheta : 0) + t.vTheta,
-      }
-      const p = posRef.current
-      p.x += v.vx * dt
-      p.y += v.vy * dt
-      p.theta += v.vTheta * dt
-
-      // 시야 밖으로 나가지 않게 막는다.
-      const r = Math.hypot(p.x, p.y)
-      if (r > settings.fieldRadius) {
-        p.x = (p.x / r) * settings.fieldRadius
-        p.y = (p.y / r) * settings.fieldRadius
+        p.x += k.vx * dt
+        p.y += k.vy * dt
+        p.theta += (levelOk ? k.vTheta : 0) * dt
+        // 시야 밖으로 나가지 않게 막는다.
+        const r = Math.hypot(p.x, p.y)
+        if (r > settings.fieldRadius) {
+          p.x = (p.x / r) * settings.fieldRadius
+          p.y = (p.y / r) * settings.fieldRadius
+        }
       }
       p.theta = Math.max(-45, Math.min(45, p.theta))
+
+      // 정렬 유지 — 수평 + 허용 오차 안 상태가 끊김 없이 이어진 시간을 센다.
+      const alignedNow = levelOk && isWithinTolerance(p.x, p.y, p.theta, settings)
+      const s = successRef.current
+      if (!s.done) {
+        if (alignedNow) {
+          if (s.since === 0) s.since = now
+          if (now - s.since >= SUCCESS_HOLD_MS) {
+            s.done = true
+            s.doneAt = now
+          }
+        } else {
+          s.since = 0
+        }
+      }
 
       const tMs = now - startTime
       if (tMs - lastSend >= SEND_EVERY_MS) {
@@ -314,8 +419,14 @@ export function AlignmentExercise({ course }: { course: Course }) {
       }
 
       setElapsedMs(Math.round(tMs))
-      if (!sensorMode && Math.round(tMs / 100) !== Math.round((tMs - 16) / 100)) {
-        setKeyTilt({ ...keyTiltRef.current })
+      if (tMs - lastUi >= 100) {
+        lastUi = tMs
+        setHold({
+          progress: s.done ? 1 : s.since ? Math.min(1, (now - s.since) / SUCCESS_HOLD_MS) : 0,
+          success: s.done,
+          justSucceeded: s.done && now - s.doneAt < 3000,
+        })
+        if (!sensorMode) setKeyTilt({ ...keyTiltRef.current })
       }
       rafRef.current = requestAnimationFrame(tick)
     }
@@ -326,7 +437,21 @@ export function AlignmentExercise({ course }: { course: Course }) {
       keyboard.stop()
       channel.close()
     }
-  }, [phase, attemptId, keyboard, tilt, sensorMode, levelTolerance, settings.fieldRadius])
+    // settings 객체 자체를 넣지 않는다. 화면이 다시 그려질 때마다 새 객체가 오면
+    // 루프가 매번 다시 시작돼 채널이 새로 열리고 정렬 유지 시간이 0 으로 돌아간다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    phase,
+    attemptId,
+    keyboard,
+    tilt,
+    sensorMode,
+    levelTolerance,
+    settings.fieldRadius,
+    settings.tolerancePx,
+    settings.toleranceDeg,
+    settings.startOffset.theta,
+  ])
 
   /** 정렬 확정 — 서버가 summary 와 보정 구간을 계산한다. */
   async function confirmAlignment() {
@@ -418,7 +543,13 @@ export function AlignmentExercise({ course }: { course: Course }) {
               title="장비 뷰"
               subtitle="스테이지 위의 기판과 그 위에 떠 있는 마스크 판입니다"
               aside={
-                level ? <Badge tone="ok">평행 확보</Badge> : <Badge tone="muted">기울어짐</Badge>
+                hold.success ? (
+                  <Badge tone="ok">{SUCCESS_TEXT.title}</Badge>
+                ) : levelNow ? (
+                  <Badge tone="muted">수평</Badge>
+                ) : (
+                  <Badge tone="muted">기울어짐</Badge>
+                )
               }
             />
             <div ref={stageHostRef}>
@@ -440,6 +571,44 @@ export function AlignmentExercise({ course }: { course: Course }) {
               }
             />
             </div>
+            {phase === 'aligning' && (
+              <div
+                className={`mt-3 rounded-lg px-3.5 py-3 transition ${
+                  hold.success ? 'bg-ok-50 ring-2 ring-inset ring-ok-500/50' : 'bg-slate-50'
+                } ${hold.justSucceeded ? 'animate-pulse' : ''}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`text-[13px] font-semibold ${
+                      hold.success ? 'text-ok-500' : 'text-slate-800'
+                    }`}
+                  >
+                    {hold.success ? SUCCESS_TEXT.title : SUCCESS_TEXT.holdTitle}
+                  </span>
+                  {hold.success && <Badge tone="ok">{SUCCESS_TEXT.badge}</Badge>}
+                </div>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600">
+                  {hold.success
+                    ? SUCCESS_TEXT.body
+                    : hold.progress > 0
+                      ? SUCCESS_TEXT.holding
+                      : sensorMode
+                        ? SUCCESS_TEXT.idleSensor
+                        : SUCCESS_TEXT.idleKeyboard}
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full rounded-full bg-ok-500"
+                      style={{ width: `${Math.round(hold.progress * 100)}%` }}
+                    />
+                  </div>
+                  <span className="w-20 text-right text-[11px] font-medium tabular-nums text-slate-600">
+                    {`${((hold.progress * SUCCESS_HOLD_MS) / 1000).toFixed(1)} / ${SUCCESS_HOLD_MS / 1000}초`}
+                  </span>
+                </div>
+              </div>
+            )}
             {exposureStage && (
               <div className="mt-3 rounded-lg bg-slate-50 px-3.5 py-3">
                 <div className="flex items-center justify-between gap-2">
@@ -575,11 +744,15 @@ export function AlignmentExercise({ course }: { course: Course }) {
               dTheta={error.dTheta}
               settings={settings}
               within={within}
+              positionFixed={sensorMode}
             />
             <dl className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-[12.5px]">
               <Row label="경과 시간" value={`${(elapsedMs / 1000).toFixed(1)}초`} />
               <Row label="기록된 지점" value={`${trail.length}개`} />
-              <Row label="위치 오차" value={`${positionError(error.dx, error.dy).toFixed(1)}px`} />
+              <Row
+                label="위치 오차"
+                value={sensorMode ? '가운데 고정' : `${positionError(error.dx, error.dy).toFixed(1)}px`}
+              />
               <Row
                 label="계산 위치"
                 value={
@@ -677,7 +850,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
                 </dl>
                 <div
                   className={`mt-2.5 rounded-lg px-3 py-2.5 ${
-                    level ? 'bg-ok-50/60 ring-1 ring-inset ring-ok-500/25' : 'bg-slate-50'
+                    keyboardLevel ? 'bg-ok-50/60 ring-1 ring-inset ring-ok-500/25' : 'bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -686,10 +859,14 @@ export function AlignmentExercise({ course }: { course: Course }) {
                       {keyTilt.roll.toFixed(1)}° · 앞뒤 {keyTilt.pitch >= 0 ? '+' : ''}
                       {keyTilt.pitch.toFixed(1)}°
                     </span>
-                    {level ? <Badge tone="ok">평행 확보</Badge> : <Badge tone="muted">기울어짐</Badge>}
+                    {keyboardLevel ? (
+                      <Badge tone="ok">평행 확보</Badge>
+                    ) : (
+                      <Badge tone="muted">기울어짐</Badge>
+                    )}
                   </div>
                   <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                    {level ? CONTROLLER_TEXT.rotateReady : CONTROLLER_TEXT.rotateLocked}
+                    {keyboardLevel ? CONTROLLER_TEXT.rotateReady : CONTROLLER_TEXT.rotateLocked}
                   </p>
                   {(keyTilt.roll !== 0 || keyTilt.pitch !== 0) && (
                     <button
@@ -711,8 +888,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
             )}
             {sensorMode && (
               <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11.5px] leading-relaxed text-slate-500">
-                센서 모드에서는 위치(X·Y)를 방향키로 맞추고, 회전(θ)은 모형을 비틀어 맞춥니다.
-                회전은 수평이 확보된 동안에만 반영됩니다.
+                {CONTROLLER_TEXT.sensorModeNote}
               </p>
             )}
             {phase === 'aligning' && (
@@ -767,7 +943,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
                 <>
                   <ControllerPanel
                     attitude={attitude}
-                    level={level}
+                    level={levelNow}
                     toleranceDeg={levelTolerance}
                   />
 
@@ -776,12 +952,15 @@ export function AlignmentExercise({ course }: { course: Course }) {
                       <span className="text-[12px] font-semibold text-slate-700">
                         {CONTROLLER_TEXT.levelStepTitle}
                       </span>
-                      <span className="text-[11px] font-medium text-slate-500">
-                        영점 {tiltState.zeroed ? '잡음' : '안 잡음'}
+                      <span className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-slate-500">
+                          영점 {tiltState.zeroed ? '잡음' : '안 잡음'}
+                        </span>
+                        {levelNow ? <Badge tone="ok">수평</Badge> : <Badge tone="muted">기울어짐</Badge>}
                       </span>
                     </div>
                     <p className="mt-1 text-[11.5px] leading-relaxed text-slate-500">
-                      {level ? '평행이 확보되었습니다.' : CONTROLLER_TEXT.levelHint}
+                      {levelNow ? CONTROLLER_TEXT.levelOk : CONTROLLER_TEXT.levelHint}
                     </p>
                     <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
                       {CONTROLLER_TEXT.zeroHint}
@@ -789,7 +968,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={tilt.setZero}
+                        onClick={zeroSensor}
                         className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
                       >
                         영점 잡기
@@ -797,7 +976,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
                       {tiltState.zeroed && (
                         <button
                           type="button"
-                          onClick={tilt.clearZero}
+                          onClick={clearSensorZero}
                           className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
                         >
                           영점 지우기
@@ -813,23 +992,15 @@ export function AlignmentExercise({ course }: { course: Course }) {
                     </div>
                   </div>
 
-                  <div
-                    className={`mt-2 rounded-lg px-3.5 py-3 ${
-                      level ? 'bg-ok-50/60 ring-1 ring-inset ring-ok-500/25' : 'bg-slate-50'
-                    }`}
-                  >
+                  <div className="mt-2 rounded-lg bg-slate-50 px-3.5 py-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[12px] font-semibold text-slate-700">
                         {CONTROLLER_TEXT.rotateStepTitle}
                       </span>
-                      {level ? (
-                        <Badge tone="ok">회전 입력 가능</Badge>
-                      ) : (
-                        <Badge tone="muted">잠김</Badge>
-                      )}
+                      {thetaOk ? <Badge tone="ok">기준 안</Badge> : <Badge tone="muted">조정 중</Badge>}
                     </div>
                     <p className="mt-1 text-[11.5px] leading-relaxed text-slate-500">
-                      {level ? CONTROLLER_TEXT.rotateReady : CONTROLLER_TEXT.rotateLocked}
+                      {CONTROLLER_TEXT.rotateGuide}
                     </p>
                     <div className="mt-2.5 flex items-center gap-2">
                       <span className="text-[11px] text-slate-400">회전 미세조정</span>

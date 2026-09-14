@@ -1,0 +1,453 @@
+// WME (We Make Experts) — 데이터 모델 (DBML, 논리 설계)
+// dbdiagram.io 에 붙여넣으면 ERD 로 보인다.
+//
+// 이 ERD 는 "화면과 API 가 쓰는 모든 데이터"를 테이블·컬럼으로 드러낸 논리 설계다.
+// 시연 앱(SQLite, web/backend/schema.sql)은 같은 데이터를 6개 테이블 + JSON 컬럼으로 저장하고,
+// API 응답은 이 설계와 같은 구조(배열 = 하위 테이블 행)로 내려준다.
+// 논리 테이블 ↔ 시연 앱 저장 위치 매핑은 각 테이블 Note 와 기획/설계/화면설계.md 4절에 있다.
+//
+// [설계] = 설계에만 있고 시연 앱에 구현하지 않은 항목 (로그인)
+// 최종 작성: 2026-09-14 (HEADER)
+
+Project WME {
+  database_type: 'SQLite (시연 앱) — 논리 설계는 DBMS 중립'
+  Note: '''
+  B2B 사내 기술교육 플랫폼. 신입사원이 실장비 투입 전 정렬·판단 실습을 반복하고,
+  매니저가 실습 기록과 성취도를 확인한다.
+  그룹: 사용자·배정 / 과정 콘텐츠 / 실습 기록 / AI 피드백
+  '''
+}
+
+// ═════════════════════════ 코드값 ═════════════════════════
+
+Enum user_role {
+  learner    [note: '신입사원']
+  instructor [note: '매니저']
+}
+
+Enum course_availability {
+  available   [note: '실습 가능']
+  preview     [note: '미리보기']
+  coming_soon [note: '준비 중']
+}
+
+Enum exercise_type {
+  alignment [note: '정렬 실습 — 3D 장비 뷰, 키보드/모형 컨트롤러 조작']
+  judgment  [note: '판단 실습 — 조작 없이 확인 순서 결정']
+}
+
+Enum guide_kind {
+  objective    [note: '학습 목표']
+  prerequisite [note: '사전 지식']
+  material     [note: '준비물']
+  control      [note: '조작 안내 (방향키·Q/E·Shift)']
+  tilt_control [note: '키보드 기울기 조작 안내 (W/S·A/D)']
+}
+
+Enum enrollment_status {
+  not_started
+  in_progress
+  completed
+}
+
+Enum attempt_source {
+  mock   [note: '시연용 합성 기록']
+  replay [note: '저장된 측정 재생']
+  live   [note: '실제 조작 기록']
+}
+
+Enum input_device {
+  keyboard         [note: '키보드 조작 (기본)']
+  model_controller [note: '센서를 붙인 교육용 모형 컨트롤러 (선택)']
+}
+
+Enum attempt_status {
+  aligning        [note: '정렬 중 (판단 실습은 aligned 에서 시작)']
+  aligned         [note: '정렬 확정 — 분석 완료']
+  submitted       [note: '답변 제출 — 규칙 기반 채점 완료']
+  feedback_ready  [note: 'AI 피드백 완료']
+  feedback_failed [note: 'AI 피드백 실패 — 답변·점수 보존']
+}
+
+Enum feedback_status {
+  none
+  pending
+  ready
+  failed
+}
+
+Enum rubric_source {
+  rule [note: '규칙 기반 임시 채점 (AI 채점 아님)']
+  llm  [note: 'LLM 채점']
+}
+
+Enum feedback_generator {
+  llm  [note: '모델 생성']
+  mock [note: '규칙 기반 샘플']
+}
+
+Enum feedback_item_kind {
+  good         [note: '잘한 점']
+  improve      [note: '개선할 점']
+  cannot_judge [note: '기록만으로 판단할 수 없는 것']
+}
+
+Enum measurement_quality {
+  ok
+  gap [note: '수신 끊김']
+}
+
+Enum event_type {
+  adjustment [note: '보정 구간']
+  overshoot  [note: '과잉 보정 구간']
+  manual     [note: '학습자 지정 구간']
+}
+
+// ═════════════════════════ 사용자 · 배정 ═════════════════════════
+
+Table users {
+  id            varchar   [pk, note: '예: u-1']
+  login_id      varchar   [unique, not null, note: '[설계] 로그인 아이디']
+  password_hash varchar   [not null, note: '[설계] 비밀번호 해시 (평문 저장 금지)']
+  display_name  varchar   [not null]
+  role          user_role [not null]
+  department    varchar   [not null, note: '예: 장비기술1팀 · 신입']
+
+  Note: '사용자. role 이 화면 접근 범위를 정한다. 시연 앱: users (login_id·password_hash 없음, 데모 로그인)'
+}
+
+Table enrollments {
+  id           varchar           [pk]
+  user_id      varchar           [not null, ref: > users.id]
+  course_id    varchar           [not null, ref: > courses.id]
+  status       enrollment_status [not null, note: '완료 단계 수로 계산']
+  completed_at timestamp         [null]
+
+  indexes {
+    (user_id, course_id) [unique]
+  }
+
+  Note: '과정 배정. users ↔ courses 의 M:N. 시연 앱: enrollments'
+}
+
+Table enrollment_steps {
+  enrollment_id varchar   [not null, ref: > enrollments.id]
+  step_id       integer   [not null, ref: > course_steps.id]
+  completed_at  timestamp [not null]
+
+  indexes {
+    (enrollment_id, step_id) [pk]
+  }
+
+  Note: '배정별 완료한 단계 (enrollments ↔ course_steps M:N). 진도율 = 완료 단계 수 ÷ 과정 단계 수 (저장하지 않고 계산). API: Enrollment.stepsCompleted. 시연 앱: enrollments.steps_completed_json'
+}
+
+// ═════════════════════════ 과정 콘텐츠 ═════════════════════════
+
+Table courses {
+  id                varchar             [pk, note: '예: photo-align, defect-report']
+  title             varchar             [not null]
+  subtitle          varchar             [not null]
+  description       text                [not null]
+  availability      course_availability [not null]
+  exercise_type     exercise_type       [not null, default: 'alignment', note: '조작 화면·분석기·채점 규칙이 갈린다']
+  estimated_minutes integer             [not null]
+  version           varchar             [not null, note: '예: course-2.0.0']
+
+  Note: '교육 과정. 업종 내용은 데이터에만 있고 코드는 업종 중립. 시연 앱: courses'
+}
+
+Table course_guides {
+  id         integer    [pk, increment]
+  course_id  varchar    [not null, ref: > courses.id]
+  kind       guide_kind [not null]
+  sort_order integer    [not null]
+  label      varchar    [null, note: '조작 안내일 때 키 (예: Q / E)']
+  content    text       [not null, note: '목표·사전 지식·준비물 문장, 또는 조작 효과 (예: 회전(θ) 조정)']
+
+  indexes {
+    (course_id, kind, sort_order) [unique]
+  }
+
+  Note: '대기방·실습 화면 안내 문구. API: Course.objectives / prerequisites / alignment.materials / alignment.controls / alignment.tiltControls. 시연 앱: courses.content_json'
+}
+
+Table course_steps {
+  id         integer [pk, increment]
+  course_id  varchar [not null, ref: > courses.id]
+  step_key   varchar [not null, note: '예: concept, marks, align, submit, feedback (API 의 step id)']
+  sort_order integer [not null]
+  title      varchar [not null]
+  summary    text    [not null]
+
+  indexes {
+    (course_id, step_key) [unique]
+  }
+
+  Note: '과정 단계. API: Course.steps[]. 시연 앱: courses.content_json → steps'
+}
+
+Table rubric_criteria {
+  id          integer [pk, increment]
+  course_id   varchar [not null, ref: > courses.id]
+  sort_order  integer [not null, note: 'API 의 rubric·rubricScores 배열 순서']
+  short_name  varchar [not null, note: '예: 정렬 정확도']
+  description text    [not null]
+
+  indexes {
+    (course_id, sort_order) [unique]
+  }
+
+  Note: '평가 기준 (과정당 4개). API: Course.rubric[]. 시연 앱: courses.rubric_json'
+}
+
+Table order_options {
+  id         integer [pk, increment]
+  course_id  varchar [not null, ref: > courses.id]
+  option_key varchar [not null, note: '예: xy-then-theta']
+  sort_order integer [not null]
+  label      varchar [not null]
+  hint       text    [null]
+
+  indexes {
+    (course_id, option_key) [unique]
+  }
+
+  Note: '정렬 실습의 조정 순서 선택지. API: Course.orderOptions[]. 시연 앱: courses.content_json → orderOptions'
+}
+
+Table alignment_settings {
+  course_id             varchar [pk, ref: - courses.id, note: '과정 1 : 설정 1']
+  tolerance_px          real    [not null, note: '위치 허용 오차 — 교육 과정 설정값이며 실제 장비 정밀도가 아님']
+  tolerance_deg         real    [not null, note: '회전 허용 오차']
+  um_per_px             real    [not null]
+  start_offset_x        real    [not null, note: '시작 오차']
+  start_offset_y        real    [not null]
+  start_offset_theta    real    [not null]
+  field_radius          real    [not null]
+  fixed_mark_label      varchar [not null, note: '예: 마스크 마크']
+  moving_mark_label     varchar [not null, note: '예: 웨이퍼 마크']
+  controller_notice     text    [not null, note: '모형 컨트롤러는 교육용이라는 고지']
+  control_coefficients  text    [not null, note: '입력→이동 속도 변환 계수 (화면에 표시하지 않는 동작 설정, JSON). API: Course.control']
+
+  Note: '정렬 실습 설정. API: Course.alignment, Course.control. 시연 앱: courses.content_json → alignment, control'
+}
+
+Table judgment_scenarios {
+  course_id  varchar [pk, ref: - courses.id, note: '과정 1 : 시나리오 1']
+  situation  text    [not null, note: '상황 설명']
+  order_note text    [not null, note: '권장 순서는 정답이 아니라는 고지']
+  rationale  text    [not null, note: '권장 순서 근거 — 제출 전 비공개']
+
+  Note: '판단 실습 상황. API: Course.scenario. 시연 앱: courses.content_json → scenario'
+}
+
+Table scenario_observations {
+  id         integer [pk, increment]
+  course_id  varchar [not null, ref: > judgment_scenarios.course_id]
+  sort_order integer [not null]
+  label      varchar [not null, note: '예: 패턴 상태']
+  value      varchar [not null, note: '예: 중심부 정상 · 가장자리 흐림']
+
+  Note: '관측값. API: Scenario.observations[]'
+}
+
+Table check_items {
+  id               integer [pk, increment]
+  course_id        varchar [not null, ref: > judgment_scenarios.course_id]
+  item_key         varchar [not null, note: '예: wedge (API 의 checkItems id)']
+  label            varchar [not null]
+  display_order    integer [not null, note: '화면 시작 순서 (권장 순서와 다르게)']
+  recommended_rank integer [not null, note: '권장 순서 — 제출 전 비공개. API: Scenario.recommendedOrder']
+
+  indexes {
+    (course_id, item_key) [unique]
+  }
+
+  Note: '판단 실습 확인 항목. API: Scenario.checkItems[]'
+}
+
+// ═════════════════════════ 실습 기록 ═════════════════════════
+
+Table attempts {
+  id                  varchar         [pk, note: '예: e-u-1-stage-a3']
+  enrollment_id       varchar         [not null, ref: > enrollments.id]
+  attempt_no          integer         [not null, note: '배정 안에서 서버가 부여']
+  source              attempt_source  [not null]
+  input_device        input_device    [not null, default: 'keyboard']
+  status              attempt_status  [not null]
+  started_at          timestamp       [not null]
+  ended_at            timestamp       [null, note: '정렬: 확정 시각 / 판단: 제출 시각']
+  duration_sec        integer         [not null, default: 0]
+
+  // 정렬 실습 결과 (서버 분석)
+  final_dx            real            [null]
+  final_dy            real            [null]
+  final_dtheta        real            [null]
+  duration_ms         integer         [null]
+  adjustment_count    integer         [null, note: '보정 횟수']
+  overshoot_count     integer         [null, note: '과잉 보정 횟수']
+  converged           boolean         [null, note: '허용 범위 통과 — 서버가 계산']
+
+  // 판단 실습 결과 (제출 시 계산)
+  first_pick_rank     integer         [null]
+  order_distance      integer         [null]
+  top3_overlap        integer         [null]
+  passed              boolean         [null]
+
+  analysis_detail     text            [null, note: '경로 분석 상세·채점 지표 (JSON). API: summary.pathAnalysis, summary.scoringMetrics']
+  phase_markers       text            [not null, note: '단계 전환 기록 (JSON). API: phaseMarkers']
+
+  // 답변
+  order_option_id     integer         [null, ref: > order_options.id, note: '정렬 실습 조정 순서']
+  reason              text            [null, note: '학습자가 쓴 이유 (1~2000자). 데이터로만 다룬다']
+  submitted_at        timestamp       [null]
+
+  // 채점 · 피드백 상태
+  rubric_source       rubric_source   [null]
+  feedback_status     feedback_status [not null, default: 'none']
+  feedback_error      text            [null, note: '분류된 실패 문구만 (API 키 등 원본 예외 저장 금지)']
+  feedback_generator  feedback_generator [null]
+  feedback_next_step  text            [null, note: '다음 연습']
+  feedback_created_at timestamp       [null]
+  feedback_viewed_at  timestamp       [null]
+
+  // 재현용 버전
+  course_version      varchar         [not null]
+  model_version       varchar         [not null, note: '예: rule-align-1.0.0']
+  settings_version    varchar         [not null]
+
+  indexes {
+    (enrollment_id, attempt_no) [unique]
+    started_at
+  }
+
+  Note: '실습 시도. 재실습은 새 행이며 덮어쓰지 않는다. 배정 1 : 시도 N. 시연 앱: attempts (결과·답변·피드백은 summary_json·answer_json·feedback_json)'
+}
+
+Table attempt_check_orders {
+  attempt_id    varchar [not null, ref: > attempts.id]
+  check_item_id integer [not null, ref: > check_items.id]
+  position      integer [not null, note: '학습자가 정한 순서 (1부터)']
+
+  indexes {
+    (attempt_id, check_item_id) [pk]
+    (attempt_id, position)      [unique]
+  }
+
+  Note: '판단 실습 답변 — 확인 순서 (attempts ↔ check_items M:N). API: Answer.orderedIds. 시연 앱: attempts.answer_json'
+}
+
+Table attempt_rubric_scores {
+  attempt_id   varchar [not null, ref: > attempts.id]
+  criterion_id integer [not null, ref: > rubric_criteria.id]
+  score        integer [not null, note: '0 미충족 / 1 부분 / 2 충족']
+  reason       text    [null, note: '기준별 판정 이유 (규칙 채점)']
+
+  indexes {
+    (attempt_id, criterion_id) [pk]
+  }
+
+  Note: '기준별 점수 (attempts ↔ rubric_criteria M:N). 출처는 attempts.rubric_source. API: rubricScores[], rubricReasons[]. 시연 앱: attempts.rubric_scores_json (이유는 조회 시 계산)'
+}
+
+Table measurements {
+  id          integer             [pk, increment]
+  attempt_id  varchar             [not null, ref: > attempts.id, note: 'ON DELETE CASCADE']
+  t_ms        integer             [not null, note: '시도 시작부터 경과 밀리초']
+  ax          real                [null, note: 'IMU 원본 — 키보드면 NULL']
+  ay          real                [null]
+  az          real                [null]
+  gx          real                [null]
+  gy          real                [null]
+  gz          real                [null]
+  roll        real                [not null, note: '컨트롤러 기울기(도), 키보드면 0']
+  pitch       real                [not null]
+  gyro_mag    real                [null]
+  wafer_x     real                [not null, note: '웨이퍼 마크 위치(px), 마스크 마크 기준']
+  wafer_y     real                [not null]
+  wafer_theta real                [not null, note: '웨이퍼 회전(도)']
+  quality     measurement_quality [not null, default: 'ok']
+
+  indexes {
+    (attempt_id, t_ms) [unique]
+  }
+
+  Note: '정렬 실습 시계열 (WebSocket 초당 약 25회). 시도 1 : 측정 N. API: Attempt.samples[]. 시연 앱: measurements'
+}
+
+Table events {
+  id         varchar    [pk]
+  attempt_id varchar    [not null, ref: > attempts.id, note: 'ON DELETE CASCADE']
+  start_ms   integer    [not null]
+  end_ms     integer    [not null, note: 'end_ms > start_ms']
+  type       event_type [not null]
+  axis       varchar    [null, note: '주로 움직인 축 (x, y, xy, theta)']
+  metrics    text       [not null, note: '구간 지표 (JSON): errorBefore, errorAfter, movedX, overshootAmount 등']
+
+  indexes {
+    attempt_id
+  }
+
+  Note: '보정·과잉 보정 구간 — 확정 시 서버가 규칙 기반으로 생성. 시도 1 : 구간 N. API: Attempt.events[]. 시연 앱: events'
+}
+
+// ═════════════════════════ AI 피드백 ═════════════════════════
+
+Table feedback_items {
+  id         integer            [pk, increment]
+  attempt_id varchar            [not null, ref: > attempts.id]
+  kind       feedback_item_kind [not null]
+  sort_order integer            [not null]
+  content    text               [not null]
+
+  indexes {
+    (attempt_id, kind, sort_order) [unique]
+  }
+
+  Note: '피드백 문장. API: Feedback.good[] / improve[] / cannotJudge[]. 시연 앱: attempts.feedback_json'
+}
+
+Table feedback_evidence {
+  attempt_id varchar [not null, ref: > attempts.id]
+  event_id   varchar [not null, ref: > events.id, note: '그 시도에 실재하는 구간만 저장 (서버 검증)']
+
+  indexes {
+    (attempt_id, event_id) [pk]
+  }
+
+  Note: '피드백 근거 구간 (attempts ↔ events M:N). API: Feedback.eventIds[]. 시연 앱: attempts.feedback_json → eventIds'
+}
+
+// ═════════════════════════ 그룹 ═════════════════════════
+
+TableGroup "사용자·배정" {
+  users
+  enrollments
+  enrollment_steps
+}
+
+TableGroup "과정 콘텐츠" {
+  courses
+  course_guides
+  course_steps
+  rubric_criteria
+  order_options
+  alignment_settings
+  judgment_scenarios
+  scenario_observations
+  check_items
+}
+
+TableGroup "실습 기록" {
+  attempts
+  attempt_check_orders
+  attempt_rubric_scores
+  measurements
+  events
+}
+
+TableGroup "AI 피드백" {
+  feedback_items
+  feedback_evidence
+}

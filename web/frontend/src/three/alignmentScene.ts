@@ -19,8 +19,12 @@ export interface StagePose {
   /** 모형 기울기(도). 키보드 모드에서는 0 이다. */
   roll: number
   pitch: number
-  /** 수평(평행)이 확보됐는지 */
+  /** 링을 초록으로 칠할지 — 정렬 유지 성공 뒤에만 참이다 */
   level: boolean
+  /** 정렬 유지 진행률 0~1. 유지하는 동안 링이 조금씩 초록으로 물든다 */
+  levelProgress?: number
+  /** 정렬 유지 시간을 채워 실습 성공인지. 성공하는 순간 링이 깜빡이고 마스크가 내려온다 */
+  levelConfirmed?: boolean
 }
 
 export interface SceneOptions {
@@ -530,6 +534,13 @@ export class AlignmentScene {
     }
   }
 
+  /** 평행 확보가 완료된 순간부터 링을 깜빡이는 시각(ms). 지나면 초록으로 멈춘다 */
+  private levelBlinkUntil = 0
+  private wasLevelConfirmed = false
+  private ringGray = new THREE.Color(0x8493a8)
+  private ringGreen = new THREE.Color(0x0ca30c)
+  private ringColor = new THREE.Color(0x8493a8)
+
   /** 한 프레임 그린다. 자세는 매번 새로 읽는다(리액트 상태를 기다리지 않는다). */
   private renderFrame(): void {
     const now = performance.now()
@@ -562,8 +573,27 @@ export class AlignmentScene {
     // 마우스로 돌린 시점을 부드럽게 따라가게 한다(감쇠를 쓰면 매 프레임 호출해야 한다).
     this.controls.update()
 
-    const ringColor = s.level ? 0x0ca30c : 0x8493a8
-    ;(this.maskRing.material as THREE.MeshBasicMaterial).color.setHex(ringColor)
+    // 평행 확보가 완료되는 순간 링을 깜빡이고, 마스크를 웨이퍼 가까이(근접 간격) 내린다.
+    // 실제 얼라이너도 평행을 맞춘 뒤 간격을 좁히고 위치·회전을 맞춘다. 발광 효과는 쓰지 않는다.
+    const confirmed = pose.levelConfirmed ?? false
+    if (confirmed && !this.wasLevelConfirmed) this.levelBlinkUntil = now + 1500
+    this.wasLevelConfirmed = confirmed
+
+    const maskTargetY = confirmed ? 0.3 : 0.42
+    const maskY = this.maskPlate.position.y + (maskTargetY - this.maskPlate.position.y) * 0.08
+    this.maskPlate.position.y = maskY
+    this.maskRing.position.y = maskY
+
+    if (now < this.levelBlinkUntil) {
+      const on = Math.floor((this.levelBlinkUntil - now) / 250) % 2 === 0
+      this.ringColor.copy(on ? this.ringGreen : this.ringGray)
+    } else if (s.level) {
+      this.ringColor.copy(this.ringGreen)
+    } else {
+      // 유지하는 동안 조금씩 초록으로 물든다(키보드 모드에는 진행률이 없어 회색 그대로)
+      this.ringColor.copy(this.ringGray).lerp(this.ringGreen, (pose.levelProgress ?? 0) * 0.6)
+    }
+    ;(this.maskRing.material as THREE.MeshBasicMaterial).color.copy(this.ringColor)
 
     this.renderer.render(this.scene, this.camera)
   }

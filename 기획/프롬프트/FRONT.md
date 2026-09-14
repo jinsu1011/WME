@@ -4,7 +4,12 @@
 미니 프로젝트를 하는 중이야. 이 대화는 FRONT 세션이야. web/frontend 만 담당해.
 
 서비스명 WME. 제출자: 9반 김진수. 저장소: https://github.com/jinsu1011/WME
-시작할 때 git pull, 끝낼 때 commit + push (내가 직접 한다)
+
+## 0. ★ 제일 먼저 확인
+- **HEADER 세션이 `git pull`·`./시작.sh` 를 끝낸 뒤에 이 대화를 시작한다.** 설치·pull 은 HEADER 한 곳에서만 한다
+- 너는 확인만 한다: `git log --oneline -1` 이 `57730f4` 이후 커밋인지, `ls web/frontend/node_modules/.bin | grep -E "^vite$"` 가 나오는지
+- 둘 중 하나라도 아니면 **직접 설치·pull 하지 말고** 멈추고 "HEADER 에서 git pull·./시작.sh 를 먼저 하세요"라고 알린다
+- 끝낼 때 commit + push 는 내가 한다
 
 ## 먼저 읽을 것
 1. 기획/과제요건.md                 ← ★ 과제 평가 기준·제출물. 여기부터

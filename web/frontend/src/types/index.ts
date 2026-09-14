@@ -67,6 +67,8 @@ export interface AlignmentSettings {
   startOffset: { x: number; y: number; theta: number }
   /** 조작 안내 문구 */
   controls: ControlHint[]
+  /** 키보드 모드에서만 따로 보여 주는 기울기 키 안내. controls 에 섞으면 센서 모드에서도 보인다. */
+  tiltControls: ControlHint[]
   /** 교육용 컨트롤러임을 밝히는 문구. 화면에 항상 표시한다. */
   controllerNotice: string
   /** 정렬 마크 이름. 업종 문구이므로 컴포넌트에 직접 쓰지 않는다. */

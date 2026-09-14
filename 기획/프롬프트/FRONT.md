@@ -1,4 +1,4 @@
-<!-- 이 파일 전체를 복사해서 새 대화의 첫 메시지에 붙여넣는다. 마지막 갱신: 2026-09-14 -->
+<!-- 이 파일 전체를 복사해서 새 대화의 첫 메시지에 붙여넣는다. 마지막 갱신: 2026-09-14 저녁 (HEADER) -->
 
 한국어로 답해줘. 나는 코딩 경험이 거의 없는 SKALA 교육생이고, 3일짜리 AI 웹서비스
 미니 프로젝트를 하는 중이야. 이 대화는 FRONT 세션이야. web/frontend 만 담당해.
@@ -13,17 +13,27 @@
 4. 기획/작업로그/Front.md           ← 지금까지 한 것 전부
 5. web/frontend/ 코드
 
+## 실행 · 설치
+
+```bash
+npm --prefix web/frontend run dev          # mock  → http://localhost:5173
+npm --prefix web/frontend run dev:server   # server → http://localhost:5174 (서버 8000 이 떠 있어야 함)
+```
+
+- **새 노트북이면 설치부터** — `이어서작업.md` 1단계 (1). `node_modules` 는 `deps.nosync/node_modules` 를 가리키는 링크다.
+  링크 이름은 반드시 `node_modules` (`.nosync` 이름이면 흰 화면). `package.json` 이 바뀌면 복사 → `npm ci` 다시
+- iCloud 폴더에서 그냥 `npm install` 하지 않는다 — `.bin` 이 비고 `node_modules 2` 충돌 사본이 생긴다(9/14 겪음)
+- 포트가 이미 쓰이고 있으면 다른 창에서 떠 있는 것이다. 새로 띄우지 말고 그걸 쓴다
+- 설치·서버 켜고 끄기는 **이 세션 하나만** 한다
+
 ## 지금 상태 (전부 브라우저로 확인된 것)
 
-화면 11개(라우트) + 실습 2종. mock / server 두 모드 모두 동작. 타입검사·빌드·린트 통과.
-
-> ⚠️ **먼저 확인 (2026-09-14 HEADER 발견)**: `web/frontend/node_modules` 가 `deps.nosync/node_modules` 링크로
-> 바뀌어 있는데 `vite/bin` 이 없고 `.bin` 이 비어 있다. 빈 `node_modules 2` 도 생겼다.
-> `npm run dev` 가 새로 뜨지 않으면 설치부터 바로잡는다. **설치는 한 세션만 한다.**
+화면 11개(라우트) + 실습 2종. mock / server 두 모드 모두 동작. 타입검사·빌드·린트 통과(기존 `useDemo` 경고 1건).
 
 **실습 2종**
 - `photo-align` (alignment) — 3D 장비 뷰 중심. 마스크·웨이퍼 정렬
-- `defect-report` (judgment) — 조작 없음. 상황 읽고 확인 순서 배열
+- `defect-report` (judgment) — 조작 없음. 상황 읽고 확인 순서 배열.
+  서버가 `checkItems` 를 권장 순서와 다르게 준다(9/14). `initialOrder` 섞기는 이중 안전장치로 유지
 
 **3D 장비 뷰** (Three.js, `src/three/alignmentScene.ts`)
 - 스테이지 + 웨이퍼 + 마스크 판. 마우스로 잡고 끌면 시점 변경(회전만, 줌·팬 없음)
@@ -40,35 +50,36 @@
 **데이터**
 - `VITE_API_MODE=mock|server` 전환. mock 은 발표 백업 경로라 절대 지우지 않는다
 - 저장값: waferX/waferY/waferTheta. 채점·루브릭·결과 화면은 서버가 계산
+- **과정 설정에서 받는 것(9/14 보정 코드 제거 완료)**: `course.scenario`, `course.alignment.tiltControls`
+  (키보드 모드에서만 기존 안내와 따로 표시). mock 시드 `src/data/courses.ts` 에도 같은 값
+- 남은 상수: `src/data/controllerSettings.ts` 의 `LEVEL_TOLERANCE_DEG = 2.0` (수평 허용값) — 아래 3번
 
-## 남은 일 (2026-09-14 기준)
+## 남은 일 (2026-09-15 기준, 순서대로)
 
-### 1. 실물 센서 확인 — 아직 아무도 못 했다
-크롬으로 열고 → 「모형 컨트롤러 연결」 → 포트 `cu.usbmodem101`.
+### 1. D 키 기울기 확인 — 9/14 변경 뒤 미확인
+기울기 안내 출처를 서버로 바꾼 뒤, **W/A/S/D 를 누르고 있으면 각도가 실제로 바뀌는지** 확인하지 못했다
+(짧게 연타만 해서 0 유지). 조작 코드는 안 건드렸지만 확인한다.
+누르고 있기 → 기울기 각도 변화 → ±2° 넘으면 `기울어짐` + 회전 잠김 → `수평으로 되돌리기` 복귀. mock·server 둘 다.
+
+### 2. 실물 센서 확인 — 아직 아무도 못 했다
+크롬으로 열고 → 「모형 컨트롤러 연결」 → 실제 Arduino UNO 포트 선택 (노트북마다 이름이 다르다).
 **아두이노 IDE 시리얼 모니터를 반드시 닫고 해야 한다** (포트는 하나만 잡힌다).
 
+- ⚠️ 보드에 **임시 1Hz 펌웨어**가 올라가 있을 수 있다. SENSOR 가 50Hz 로 복구한 뒤에 한다
 - "연결됨"인데 "수신 없음"이면 보드 쪽 문제다. 파싱 코드(`src/input/serial.ts`)는 정상 확인됨.
-  IDE 모니터(115200)로 `WME,` 가 나오는지 먼저 본다.
-  `ERR,MPU6050_NOT_FOUND` 면 배선·접촉 문제
+  IDE 모니터(115200)로 `WME,` 가 나오는지 먼저 본다. `ERR,MPU6050_NOT_FOUND` 면 배선·접촉 문제
 - 포트를 열면 우노가 자동 리셋되어 부팅에 2초쯤 걸리는 것은 정상이다
-- 3D가 모형 따라 기울어지는지 / 방향이 반대면 부호만 뒤집는다
+- 3D가 모형 따라 기울어지는지 / 방향이 반대면 부호만 뒤집는다 (부호는 SENSOR 측정값을 따른다)
 
-### 2. 서버로 옮겨진 값의 보정 코드·상수 제거 ← **지금 가능 (BE 7차 완료, 9/14)**
-- **기울기 키(W/A/S/D) 안내** — 서버가 `course.alignment.tiltControls` 로 준다.
-  `src/data/controllerSettings.ts` 의 `KEYBOARD_TILT_CONTROLS` 를 지우고 이 값을 쓴다.
-  키보드 모드에서만, 기존 조작 안내와 따로 보여 주는 지금 방식은 유지 (HEADER 결정: 위치는 `control.keyboard` 가 아니라 `alignment.tiltControls`)
-- **`scenario`** — 서버가 과정 응답 최상위로 준다. `src/api/server.ts` `normalizeCourse` 의
-  `content.scenario` 도 찾는 보정을 지우고 `course.scenario` 만 쓴다
-- mock 시드(`src/data/`)에도 같은 값이 있어야 mock 모드가 깨지지 않는다
-- judgment `initialOrder` 섞기는 **지우지 않는다** (설계서 10.3 이중 안전장치)
-- 수평 허용값 `LEVEL_TOLERANCE_DEG = 2.0` 은 **아직 그대로** — SENSOR 흔들림 측정 후 HEADER 가 확정
+### 3. 수평 허용값 상수 — 기다린다
+`LEVEL_TOLERANCE_DEG` 는 SENSOR 흔들림 측정 → HEADER 확정 → 서버 과정 설정으로 올라간 **뒤에** 지운다. 지금은 건드리지 않는다.
 
-### 3. `coatingScene.ts` 붙이기 (선택)
+### 4. 발표 해상도 가독성 점검
+빔프로젝터 기준. 3D 뷰가 밝은 배경에서 잘 읽히는지 특히 확인한다.
+
+### 5. `coatingScene.ts` 붙이기 (선택)
 감광액 도포(스핀 코팅) 데모를 만들어 뒀지만 아직 화면에 없다.
 `포토공정 개요` 과정 대기방에 붙일 계획이었다. **시간이 남을 때만 한다.**
-
-### 4. 발표 해상도 가독성 점검 (마지막)
-빔프로젝터 기준. 3D 뷰가 밝은 배경에서 잘 읽히는지 특히 확인한다.
 
 ## 이번에 할 일
 

@@ -20,12 +20,14 @@ SCENARIO = {
         {"label": "평행도 점검 이력", "value": "3일 전 수행"},
         {"label": "노광 시간", "value": "설정값과 동일"},
     ],
+    # 배열 순서는 recommendedOrder 와 일부러 다르게 둔다(설계서 10.3).
+    # 같으면 화면을 열자마자 권장 순서가 보이고, 그대로 제출해도 만점이 된다.
     "checkItems": [
+        {"id": "coat", "label": "레지스트 도포 균일도 재확인"},
         {"id": "wedge", "label": "마스크·웨이퍼 평행도(웨지) 점검"},
+        {"id": "history", "label": "장비 정비 이력 조회"},
         {"id": "focus", "label": "노광 초점 설정 확인"},
         {"id": "contam", "label": "마스크 표면 오염 확인"},
-        {"id": "coat", "label": "레지스트 도포 균일도 재확인"},
-        {"id": "history", "label": "장비 정비 이력 조회"},
     ],
     "recommendedOrder": ["wedge", "focus", "contam", "coat", "history"],
     "orderNote": "권장 순서는 이 교육 과정이 정한 기준이며 모든 현장의 정답이 아닙니다.",

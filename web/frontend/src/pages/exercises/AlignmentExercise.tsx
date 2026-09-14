@@ -28,7 +28,6 @@ import { CLEAR_EXPOSURE_EVENT, PLAY_EXPOSURE_EVENT } from '@/three/alignmentScen
 import {
   CONTROLLER_TEXT,
   EXPOSURE_TEXT,
-  KEYBOARD_TILT_CONTROLS,
   LEVEL_TOLERANCE_DEG,
 } from '@/data/controllerSettings'
 import { useDemo } from '@/lib/demo'
@@ -667,7 +666,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
             {!sensorMode && (
               <>
                 <dl className="mt-2 space-y-2 border-t border-slate-100 pt-2 text-[12.5px]">
-                  {KEYBOARD_TILT_CONTROLS.map((c) => (
+                  {settings.tiltControls.map((c) => (
                     <div key={c.keys} className="flex items-center justify-between gap-3">
                       <dt className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600">
                         {c.keys}

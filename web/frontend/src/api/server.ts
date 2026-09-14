@@ -59,13 +59,13 @@ function toError(status: number, detail: unknown): Error {
 /**
  * 과정 응답을 화면이 쓰는 형태로 맞춘다.
  * - `exerciseType` 이 없으면 alignment 로 본다(서버 기본값과 같다)
- * - `scenario` 는 최상위에 올 수도, `content` 안에 있을 수도 있다. 둘 다 받는다
+ * - `scenario` 는 최상위로 온다. judgment 가 아닌 과정은 없으므로 null 로 채운다
  */
-function normalizeCourse(raw: Course & { content?: { scenario?: Course['scenario'] } }): Course {
+function normalizeCourse(raw: Course): Course {
   return {
     ...raw,
     exerciseType: raw.exerciseType ?? 'alignment',
-    scenario: raw.scenario ?? raw.content?.scenario ?? null,
+    scenario: raw.scenario ?? null,
   }
 }
 

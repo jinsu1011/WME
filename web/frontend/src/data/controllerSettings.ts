@@ -9,16 +9,6 @@
 /** 수평(평행)으로 볼 기울기 허용 범위(도). 시작값 ±2.0° */
 export const LEVEL_TOLERANCE_DEG = 2.0
 
-/**
- * 키보드로 기울기를 조작할 때의 안내.
- * ⚠️ HEADER 확인 필요 — 과정 설정값(`course.control`)에 아직 기울기 키 자리가 없다.
- * 서버에 자리가 생기면 `alignment.controls` 로 옮긴다.
- */
-export const KEYBOARD_TILT_CONTROLS = [
-  { keys: 'W / S', effect: '앞뒤로 기울이기' },
-  { keys: 'A / D', effect: '좌우로 기울이기' },
-] as const
-
 /** 화면 표시용 설명. 업종·과정 문구는 데이터에만 둔다. */
 export const CONTROLLER_TEXT = {
   panelTitle: '교육용 컨트롤러 상태',

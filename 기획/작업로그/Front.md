@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-09-14 — 서버 수정 반영: 보정 코드 2개 제거 + 설치 바로잡기
+
+HEADER 지시(서버 준비 완료) 반영. **저장값·채점·결과 화면은 건드리지 않았다.**
+
+1. `src/api/server.ts` `normalizeCourse` — `content.scenario` 도 찾던 보정 코드 삭제. 이제 `course.scenario` 만 쓴다
+2. `src/data/controllerSettings.ts` 의 `KEYBOARD_TILT_CONTROLS` 삭제 → `course.alignment.tiltControls` 사용.
+   타입 `AlignmentSettings.tiltControls` 추가, mock 시드(`data/courses.ts`)에도 같은 값을 넣었다.
+   키보드 모드에서만 기존 조작 안내와 따로 보여 주는 방식 그대로
+- `initialOrder` 섞기는 남겼다(설계서 10.3)
+- `LEVEL_TOLERANCE_DEG` 는 아직 서버에 자리가 없어 그대로 둔다
+
+**설치 바로잡기**: `node_modules` 가 iCloud 에 걸려 폴더 읽기에 25초씩 걸리고, 이후 `.bin` 이 비고
+`vite/bin` 이 없는 깨진 상태가 됐다(빈 `node_modules 2` 도 생김). 빈 폴더를 지우고
+`deps.nosync/` 안에서 `npm ci` 로 새로 설치한 뒤 `node_modules → deps.nosync/node_modules` 링크를 뒀다.
+실제 폴더 이름이 `node_modules` 여야 Vite 가 라이브러리로 인식한다(`node_modules.nosync` 로 했을 때 흰 화면).
+`.gitignore` 에 `*.nosync/` 추가. **다른 노트북에서는 이 링크가 따라가지 않으니 거기서 한 번 더 해야 한다.**
+
+확인한 것:
+- 타입 검사·빌드(mock/server 둘 다)·린트 통과(기존 `useDemo` 경고 1건)
+- 서버 응답: `photo-align.alignment.tiltControls` 있음, `defect-report.scenario` 최상위에 있음
+- mock(5173): 정렬 실습 키보드 모드에 `W / S 앞뒤로 기울이기`·`A / D 좌우로 기울이기` 가 기존 안내 아래 따로 뜸 →
+  모형 컨트롤러로 바꾸면 사라짐. `defect-report` 상황 카드 정상
+- server(5174): `/api/courses/photo-align`·`defect-report` 200, 기울기 안내 표시, judgment 상황 카드·관측값·확인 항목 표시.
+  5174 가 고친 `server.ts`(옛 보정 코드 없음)를 내려주는 것까지 확인
+- 확인 못 한 것: 키보드 기울기(D 키)로 각도가 바뀌는 것은 이번에 재현하지 못했다(키를 짧게 연타만 했다).
+  이번 변경은 안내 문구 출처만 바꿔서 조작 코드는 건드리지 않았다
+
 ## 2026-09-14 — 정렬 결과를 눈으로 확인하는 노광·현상 연출
 
 "마크만 겹치고 끝나서 정렬이 왜 중요한지 안 보인다"는 지적을 받고 만들었다.

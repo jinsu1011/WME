@@ -111,6 +111,10 @@ export const courses: Course[] = [
         { keys: 'Q / E', effect: '회전(θ) 조정' },
         { keys: 'Shift + 키', effect: '더 천천히 움직이기' },
       ],
+      tiltControls: [
+        { keys: 'W / S', effect: '앞뒤로 기울이기' },
+        { keys: 'A / D', effect: '좌우로 기울이기' },
+      ],
       controllerNotice:
         `센서를 붙인 ${T.mockup}은 실제 장비의 조작기를 대신하는 교육용 컨트롤러입니다. ` +
         '실제 공정에서 웨이퍼를 손으로 기울여 정렬한다는 뜻이 아닙니다.',

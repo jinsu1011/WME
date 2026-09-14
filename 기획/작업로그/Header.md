@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-14 (저녁) — 하루 마감: BACK·FRONT 최종 보고 확인 · 이어받기 전체 최신화
+
+- **FRONT 보고 확인 — 일치**: `KEYBOARD_TILT_CONTROLS` 삭제(src 전체에 없음), `server.ts:68` `raw.scenario ?? null`,
+  `types/index.ts:71` `tiltControls`, mock 시드 `courses.ts:114`, `AlignmentExercise.tsx:669` 에서 사용.
+  `node_modules` → `deps.nosync/node_modules` 링크, `.bin` 에 vite·tsc 있음, `vite.js` 존재
+- **BACK 마감 보고 확인 — 일치**: `web/backend/README.md` 에 analyzers·REST 15·scoring.py·course_judgment.py 반영
+- **HEADER 결정**: backend README 12행 `--reload` 는 **지운다**(규칙과 반대, 따라 치면 2분마다 죽음) → 내일 BACK 1번
+- **결정 12·13 을 결정표에 추가** — 12 `alignment.tiltControls` 위치, 13 설치물은 `.nosync` + 링크·노트북마다 새로
+- `이어서작업.md` 전면 갱신 — 설치 절차를 FRONT·BACK 이 실제로 동작시킨 `.nosync` 방식으로,
+  `.env` 따옴표 주의, 규칙 3 "설치·서버 실행은 한 세션만", **내일 할 일 역할별 표**
+- 프롬프트 `BACK.md`(내일: --reload → LLM 6단계)·`FRONT.md`(내일: D 키 확인 → 실물 센서, 설치 안내)·`HEADER.md` 갱신
+- `PROGRESS.md` 내일 기준으로 재작성
+- 확인 못 한 것: FRONT 의 D 키 기울기 동작(FRONT 도 미확인 보고) → 내일 FRONT 1번
+
+**내일**: 수업에서 양식·날짜·배포·키 확인 → DB설계·API명세서 반영 → 화면설계 → 11절 → DB 다이어그램 PNG
+
+---
+
+## 2026-09-14 — BE 8차 결과 확인 (checkItems 순서)
+
+- **BACK 보고를 서버로 확인 — 일치**: `checkItems` = coat, wedge, history, focus, contam /
+  `recommendedOrder` = wedge, focus, contam, coat, history. id 집합 같음, 최상위 `scenario` 와 `content.scenario` 동일.
+  판단 시드 점수 [0,0,0,0] / [2,2,2,2] 그대로
+- 설계서 10.3 이 이제 문서·데이터 모두 반영됨. FRONT `initialOrder` 는 유지
+- BACK 이 다시 올린 DB설계 불일치(준비 중 표기·행 수 16/12)는 **앞 작업에서 이미 고쳐 커밋(`dbd37d3`)** — 추가 조치 없음
+- `web/backend/README.md` 옛 내용은 아직 그대로(REST 10, `analysis.py`) → `BACK.md` 에 짧은 일로 추가
+- `BACK.md` 0번 완료 처리. BACK 남은 일은 LLM 실제 호출 + README 정리
+
+---
+
 ## 2026-09-14 — BE 7차 결과 확인 · checkItems 미반영 발견
 
 - **BACK 보고 4건을 코드·실행 중 서버로 확인 — 전부 일치**: `main.py:289` `COALESCE(ended_at, ?)` /

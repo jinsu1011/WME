@@ -19,12 +19,16 @@ DB 파일은 `data/local/wme.db` 에 만들어진다(깃에 올라가지 않는�
 | 파일 | 역할 |
 |---|---|
 | `schema.sql` | 6테이블 DDL. `실습과정_정렬.md` 9절 변경 반영 |
-| `app/analysis.py` | **정렬 경로 분석 — 규칙 기반**. 과잉 보정·축 간섭·수렴 패턴. 모델 학습 없음 |
-| `app/course_data.py` | 과정 정의(단계 5개·조정 순서 선택지 4개·루브릭 4개·허용 오차) |
+| `app/analyzers/` | 실습 유형별 분석기. `__init__.py` 가 `exercise_type` 으로 고른다 |
+| `app/analyzers/alignment.py` | **정렬 경로 분석 — 규칙 기반**. 과잉 보정·축 간섭·수렴 패턴. 모델 학습 없음 |
+| `app/analyzers/judgment.py` | 상황 판단 실습 지표(1순위 위치·순서 차이·상위 3개 겹침). 측정 없음 |
+| `app/scoring.py` | 채점 규칙 해석기(threshold·categorical·modifiers). 도메인 지식 없음, 규칙은 과정 데이터에 있다 |
+| `app/course_data.py` | 정렬 실습 과정 정의(단계·조정 순서 선택지·루브릭·허용 오차·채점 규칙) + 카탈로그 |
+| `app/course_judgment.py` | 상황 판단 실습 과정 정의(`defect-report` 시나리오·루브릭·채점 규칙) |
 | `app/trajectory.py` | 데모용 합성 궤적. 실측이 아니다(`source='mock'`) |
 | `app/seed.py` | 시드 삽입 |
 | `app/repo.py` | DB 읽기·쓰기와 응답 직렬화 |
-| `app/main.py` | REST 10개 + WebSocket 1개 |
+| `app/main.py` | REST 15개 + WebSocket 1개 |
 | `app/llm/prompt.py` | LLM 입력 구성 |
 | `app/llm/schema.py` | 출력 JSON 스키마 + **응답 검증** |
 | `app/llm/client.py` | **호출부. 여기만 API 키를 만진다** |

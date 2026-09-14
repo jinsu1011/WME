@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-14 — BE 9차: web/backend/README.md 옛 내용 정리 (문서만)
+
+- `app/analysis.py` → `app/analyzers/`(`__init__.py` · `alignment.py` · `judgment.py`) 3행으로 교체
+- `REST 10개` → `REST 15개 + WebSocket 1개` (`main.py` 라우트 데코레이터로 직접 셈: REST 15, WS 1)
+- 파일 표에 `app/scoring.py`, `app/course_judgment.py` 추가. `course_data.py` 설명에 채점 규칙·카탈로그 반영
+- 코드 변경 없음. 이후 LLM 키가 올 때까지 대기
+
+HEADER 참고: 같은 README 12행 실행 예시에 아직 `--reload` 가 있다(프롬프트 규칙과 반대).
+이번 지시 범위 밖이라 두었다.
+
+---
+
+## 2026-09-14 — BE 8차: judgment checkItems 순서 (설계서 10.3, HEADER 결정)
+
+`app/course_judgment.py` 의 `checkItems` **배열 순서만** `coat, wedge, history, focus, contam` 으로 바꿨다.
+`recommendedOrder`·id·라벨은 그대로. 코드 수정 없음. 시드 재적재.
+
+확인한 것(전부 실제 실행):
+- 재적재 전후 14건 `rubric_scores_json` diff 없음 (판단 시도 [0,0,0,0] / [2,2,2,2] 그대로)
+- `GET /api/courses/defect-report` 의 `scenario.checkItems` = coat, wedge, history, focus, contam /
+  `recommendedOrder` = wedge, focus, contam, coat, history → 순서 다름, id 집합 같음, 라벨 그대로
+- 최상위 `scenario` 와 `content.scenario` 의 순서 동일
+
+이제 서버가 권장 순서를 화면 초기 순서로 내려보내지 않는다.
+FRONT 의 `initialOrder` 섞기는 설계서 10.3 대로 이중 안전장치로 남긴다(지우지 않음).
+
+LLM 실제 호출은 여전히 없다(API 키 없음).
+
+---
+
 ## 2026-09-14 — BE 7차: endedAt · scenario 최상위 · capAt:1 · tiltControls (+ 환경 복구)
 
 HEADER 프롬프트(2026-09-14)의 1~4 를 반영했다. 전부 실제로 돌려서 확인했다.

@@ -10,8 +10,10 @@
 | `HEADER.md` | 문서·발표자료를 쓸 때, 결정이 필요할 때 | `PROJECT_HEAD.md`, `기획/`, `제출/` |
 | `FRONT.md` | 화면을 고칠 때 | `web/frontend/` |
 | `BACK.md` | 서버·DB·LLM을 고칠 때 | `web/backend/`, `data/local/` |
-| `SENSOR.md` | 아두이노·측정 작업을 할 때 | `hardware/`, `data/` |
-| `FRONT_센서.md` | 센서 → 화면 연결만 고칠 때 (SENSOR 다음에) | `web/frontend/` (센서 관련 파일만) |
+| `SENSOR.md` | 아두이노 작업 (9/14 밤 완료 — 필요할 때만) | `hardware/`, `data/` |
+| `FRONT_센서.md` | 센서 → 화면 연결 (9/14 밤 완료 — 필요할 때만) | `web/frontend/` (센서 관련 파일만) |
+
+노트북에 앉으면 `git pull` → `./시작.sh`, 떠날 때 `./정리.sh` → 커밋·푸시.
 
 ## 규칙 두 개만 지키면 사고가 안 난다
 

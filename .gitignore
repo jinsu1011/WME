@@ -8,3 +8,7 @@ __pycache__/
 *.pyc
 .venv/
 data/local/*.db-*
+# iCloud 충돌 사본 ("node_modules 2", ".venv 2")
+* [0-9]/
+# 수업 배포 자료(과제 PDF)는 저장소에 올리지 않는다. 요약은 기획/과제요건.md
+/AI캠퍼스_*.pdf

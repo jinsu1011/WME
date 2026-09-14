@@ -32,11 +32,18 @@ npm --prefix web/frontend run dev:server   # server → http://localhost:5174 (�
 - iCloud 폴더에서 그냥 `npm install` 하지 않는다
 - 포트가 이미 쓰이고 있으면 그걸 쓴다. 설치·서버 켜고 끄기는 **이 세션 하나만**
 
-## 지금 상태 (브라우저로 확인된 것)
+## 지금 상태 (2026-09-15 새벽, 커밋 c1cb566)
 
 화면 11개(라우트) + 실습 2종. mock / server 두 모드 동작. 타입·빌드·린트 통과(기존 `useDemo` 경고 1건).
 3D 장비 뷰 + 노광·현상 연출, 키보드(event.code)·Web Serial 입력, `course.scenario`·`course.alignment.tiltControls` 사용.
-남은 상수: `LEVEL_TOLERANCE_DEG = 2.0` (건드리지 않는다).
+
+**9/14 밤 집에서 끝낸 센서 작업 (실물 확인, 결정 15·16 — 다시 고치지 않는다)**
+- 센서 모드: 값 다듬기(`SENSOR_SMOOTHING_SEC`), 앞뒤 부호 반전(`SENSOR_AXIS_SIGN`), X/Y 가운데 고정(`고정` 표시),
+  비튼 각도 그대로 회전(수평 잠금 없음), ±0.5°·Q/E 미세조정, "port already open" 수정
+- 실습 성공(키보드·센서 공통): 정렬 시작 뒤 수평(±4°) + 허용 오차 안 5초 유지 → 진행 막대 → `실습 성공`. 저장·채점과 무관
+- 화면 상수(`data/controllerSettings.ts`): `LEVEL_TOLERANCE_DEG 4.0`, `LEVEL_EXIT_MARGIN_DEG 1.0`, `SUCCESS_HOLD_MS 5000` — **결정 16 D 로 화면 상수 유지, 서버로 옮기지 않는다**
+
+**새 노트북에 앉으면** `git pull` → `./시작.sh`. **떠날 때** `./정리.sh` → 커밋·푸시(내가 한다).
 
 ## 할 일 — 이 순서로
 
@@ -53,7 +60,11 @@ HEADER 가 코드를 대조해서 찾았다. API 는 서버에 있는데 **어�
 - 확인: mock·server 둘 다. server 는 호출 후 `GET /api/enrollments?userId=u-1` 의 `stepsCompleted`, `GET /api/attempts/{id}` 의 `feedbackViewedAt` 이 바뀌는지
 - ⚠️ server 모드에서 만든 테스트 기록은 DB 에 남는다. 캡처 전에 BACK 이 시드를 재적재하거나, 캡처에 방해되지 않게 한다
 
-### 2. ★ UI 흐름도 캡처 22장 (`화면설계.md` 5절 표 그대로)
+### 2. ★ UI 흐름도 캡처 24장 (`화면설계.md` 5절 표 그대로)
+
+- ⚠️ **BACK 이 API 대조 테스트를 끝내고 시드를 재적재한 뒤에** 찍는다 (테스트 기록이 화면에 섞이지 않게). BACK 작업로그 맨 위에서 재적재 완료를 확인
+- C-23(실습 성공)은 키보드 모드로 재현한다. C-24(센서)는 보드가 없으면 생략하고 보고
+- 결과 화면(C-16·C-18)은 **키보드 모드 기록**으로 찍는다 (결정 16 B)
 
 - **server 모드(5174)** 에서, 너비 1440px, 개발 도구·주소창 없이 화면 영역만
 - 저장: `제출/캡처/C-01_로그인.png` 형식 — **이 폴더만 예외로 쓰기 허용**
@@ -61,12 +72,12 @@ HEADER 가 코드를 대조해서 찾았다. API 는 서버에 있는데 **어�
 - 강조 박스·화살표는 넣지 않는다 (HEADER 가 PDF 에서 넣는다)
 - 캡처하다가 **화면설계.md 의 설명과 실제 화면이 다르면** 고치지 말고 목록으로 보고한다
 
-### 3. D 키 기울기 확인 (9/14 미확인)
-W/A/S/D 를 누르고 있으면 기울기 각도가 바뀌고, ±2° 넘으면 `기울어짐` + 회전 잠김, `수평으로 되돌리기` 로 복귀하는지. C-13 캡처와 같이 확인한다.
+### 3. D 키 기울기 확인
+W/A/S/D 를 누르고 있으면 기울기 각도가 바뀌고, ±4° 넘으면 `기울어짐` + 회전 잠김, `수평으로 되돌리기` 로 복귀하는지. C-13 캡처와 같이 확인한다.
 
 ### 4. 센서는 하지 않는다
-센서 연결·회전 방식은 **`FRONT_센서.md` 세션이 집에서 따로** 한다(결정 15). 시작 전 `git pull` 로 그 결과를 받는다.
-`AlignmentExercise.tsx`·`TiltSource.ts` 의 센서 부분은 건드리지 않는다. M1 때문에 `AlignmentExercise.tsx` 를 고쳐야 하면 진도 호출 몇 줄만 넣는다.
+센서 작업은 9/14 밤에 끝났다. `TiltSource.ts`·`controllerSettings.ts` 와 `AlignmentExercise.tsx` 의 센서·실습 성공 부분은 건드리지 않는다.
+M1 때문에 `AlignmentExercise.tsx` 를 고쳐야 하면 진도 호출 몇 줄만 넣는다.
 
 ## 반드시 지킬 것
 - web/backend, 기획/ 는 읽기만. 제출/ 은 `제출/캡처/` 만 쓴다

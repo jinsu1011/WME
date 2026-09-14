@@ -19,21 +19,26 @@
 
 ## 실행
 
+설치(venv·DB 시드 포함)는 [`이어서작업.md`](이어서작업.md) 1단계를 따른다. 설치 후:
+
 ```bash
-npm --prefix web/frontend install
-npm --prefix web/frontend run dev     # http://localhost:5173
+cd web/backend && ./.venv/bin/python -m uvicorn app.main:app --port 8000   # 서버
+npm --prefix web/frontend run dev:server                                  # 화면 http://localhost:5174
 ```
+
+서버 없이 보려면 `npm --prefix web/frontend run dev` (mock 모드, http://localhost:5173 — 발표 백업용).
 
 데모 로그인 — 신입사원 `1` / `1`, 매니저 `2` / `2` (인증 구현이 아니라 데모 전환)
 
-## 지금 상태
+## 지금 상태 (2026-09-14)
 
 | 영역 | 상태 |
 |---|---|
-| 기획·설계 문서 | 완료 (설계 3종은 목차) |
-| 프론트엔드 | 화면 11개 구현. 연습 화면 알맹이 남음 |
-| 백엔드 (API·DB·LLM) | 미착수 |
-| 센서·이상 탐지 | 부품 미확보 |
+| 프론트엔드 | 화면 11개 + 실습 2종(정렬 / 판단). 3D 장비 뷰, mock·server 두 모드 동작 |
+| 백엔드 (API·DB) | REST 15 + WebSocket 1, SQLite 6테이블, 규칙 기반 분석·채점 동작 |
+| LLM 피드백 | 입력 구성·검증·재시도 구현. **API 키 없어 실제 호출 0회** |
+| 센서 | Arduino UNO + MPU6050 수신 성공. 드리프트·부호 **미측정** |
+| 제출 문서 | DB설계·API명세서 원본 있음. 화면설계·기술서·발표 대본 미작성 |
 
 상세는 [`기획/PROGRESS.md`](기획/PROGRESS.md).
 
@@ -42,18 +47,18 @@ npm --prefix web/frontend run dev     # http://localhost:5173
 ```
 ├── 이어서작업.md      다른 노트북·새 대화에서 이어받을 때
 ├── PROJECT_HEAD.md    제품 정의·확정된 결정·원칙
-├── 기획/              계획서 · 진행상황 · 설계문서 · 세션 프롬프트
-├── web/frontend/      React + Vite + TypeScript 화면
-├── web/backend/       FastAPI · LLM 연결 (미착수)
-├── hardware/          Arduino 펌웨어 (미착수)
-├── data/              센서 기록 · 모델 (비어 있음)
+├── 기획/              계획서 · 진행상황 · 설계문서 · 세션 프롬프트 · 작업로그
+├── web/frontend/      React + Vite + TypeScript + Three.js 화면
+├── web/backend/       FastAPI · SQLite · 규칙 기반 분석·채점 · LLM 연결부
+├── hardware/          Arduino 펌웨어 (wme_sensor)
+├── data/              센서 수집·분석 도구, local/ 에 SQLite DB(깃 제외)
 └── 제출/              제출물
 ```
 
 ## 원칙
 
-- 측정 데이터의 출처(예시 / 재생 / 실시간)를 화면에 항상 표시한다
-- 이상도는 상대적 근거이지 고장 확률이 아니다
+- 데이터의 출처(시연용 기록 / 서버 기록 / 입력 장치)를 화면에 항상 표시한다
+- 규칙 기반 채점을 AI 채점이라고 부르지 않는다
 - 판단은 학습자가 한다. AI는 근거를 제시하고 피드백할 뿐이다
 - 구현한 것과 계획한 것을 문서·발표에서 분리해 말한다
 

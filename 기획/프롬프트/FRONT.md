@@ -15,7 +15,11 @@
 
 ## 지금 상태 (전부 브라우저로 확인된 것)
 
-화면 12개. mock / server 두 모드 모두 동작. 타입검사·빌드·린트 통과.
+화면 11개(라우트) + 실습 2종. mock / server 두 모드 모두 동작. 타입검사·빌드·린트 통과.
+
+> ⚠️ **먼저 확인 (2026-09-14 HEADER 발견)**: `web/frontend/node_modules` 가 `deps.nosync/node_modules` 링크로
+> 바뀌어 있는데 `vite/bin` 이 없고 `.bin` 이 비어 있다. 빈 `node_modules 2` 도 생겼다.
+> `npm run dev` 가 새로 뜨지 않으면 설치부터 바로잡는다. **설치는 한 세션만 한다.**
 
 **실습 2종**
 - `photo-align` (alignment) — 3D 장비 뷰 중심. 마스크·웨이퍼 정렬
@@ -49,12 +53,15 @@
 - 포트를 열면 우노가 자동 리셋되어 부팅에 2초쯤 걸리는 것은 정상이다
 - 3D가 모형 따라 기울어지는지 / 방향이 반대면 부호만 뒤집는다
 
-### 2. 값이 서버 과정 설정으로 옮겨지면 상수 제거
-`src/data/controllerSettings.ts` 에 ⚠️ HEADER 확인 필요 로 남아 있는 것들:
-- 수평 허용값 `LEVEL_TOLERANCE_DEG = 2.0` — SENSOR 의 흔들림 측정 후 확정
-- 기울기 키(W/A/S/D) 안내 — `course.control.keyboard` 에 자리를 만들기로 했다(BACK 작업)
-
-둘 다 서버로 올라가면 이 상수는 지운다.
+### 2. 서버로 옮겨진 값의 보정 코드·상수 제거 ← **지금 가능 (BE 7차 완료, 9/14)**
+- **기울기 키(W/A/S/D) 안내** — 서버가 `course.alignment.tiltControls` 로 준다.
+  `src/data/controllerSettings.ts` 의 `KEYBOARD_TILT_CONTROLS` 를 지우고 이 값을 쓴다.
+  키보드 모드에서만, 기존 조작 안내와 따로 보여 주는 지금 방식은 유지 (HEADER 결정: 위치는 `control.keyboard` 가 아니라 `alignment.tiltControls`)
+- **`scenario`** — 서버가 과정 응답 최상위로 준다. `src/api/server.ts` `normalizeCourse` 의
+  `content.scenario` 도 찾는 보정을 지우고 `course.scenario` 만 쓴다
+- mock 시드(`src/data/`)에도 같은 값이 있어야 mock 모드가 깨지지 않는다
+- judgment `initialOrder` 섞기는 **지우지 않는다** (설계서 10.3 이중 안전장치)
+- 수평 허용값 `LEVEL_TOLERANCE_DEG = 2.0` 은 **아직 그대로** — SENSOR 흔들림 측정 후 HEADER 가 확정
 
 ### 3. `coatingScene.ts` 붙이기 (선택)
 감광액 도포(스핀 코팅) 데모를 만들어 뒀지만 아직 화면에 없다.

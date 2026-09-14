@@ -152,8 +152,9 @@ erDiagram
 **업종 내용은 전부 이 테이블에 있다.** 코드는 업종 중립이고, 다른 업종 고객사에는
 이 행의 데이터만 교체한다. 이것이 "업종 중립"을 말이 아니라 구조로 증명하는 방법이다.
 
-시드에는 과정 5개가 들어 있다 — `photo-align`(실습 구현), `photo-basics`(미리보기),
-`align-record` · `exposure-basics` · `defect-report`(준비 중).
+시드에는 과정 5개가 들어 있다 — **실습 가능 2개**: `photo-align`(정렬 실습, `alignment`) ·
+`defect-report`(판단 실습, `judgment`) / `photo-basics`(미리보기) /
+`align-record` · `exposure-basics`(준비 중).
 
 ### 3.3 `enrollments` — 배정·진도
 
@@ -449,6 +450,6 @@ JSON 한 칸에 넣으면 구간 조회를 할 수 없다.
 | 확인 대상 | 결과 |
 |---|---|
 | `web/backend/schema.sql` 6테이블·컬럼·CHECK | 문서와 일치 |
-| `data/local/wme.db` 실제 행 수 | users 9 · courses 5 · enrollments 16 · attempts 12 |
+| `data/local/wme.db` 실제 행 수 | users 9 · courses 5 · enrollments **17** · attempts **14**(정렬 12 + 판단 2) — *2026-09-14 재조회* |
 | 5절 JSON 예시 | 시드 DB에서 직접 조회한 값 |
 | `rubric_source` 컬럼 | `schema.sql:82` 에 존재 확인 |

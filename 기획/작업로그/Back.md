@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-09-14 — BE 7차: endedAt · scenario 최상위 · capAt:1 · tiltControls (+ 환경 복구)
+
+HEADER 프롬프트(2026-09-14)의 1~4 를 반영했다. 전부 실제로 돌려서 확인했다.
+
+**환경 복구 (개인 맥북)**
+- `.venv` 가 다른 노트북에서 넘어온 것이라 실행되지 않았다(없는 경로 `/Users/kimjinsu/...`, `/opt/anaconda3` 를 가리킴).
+  Homebrew Python 3.11 로 `.venv.nosync` 에 새로 만들고 `.venv` 는 그 링크로 뒀다(iCloud 동기화 제외, 명령은 그대로).
+  옛 venv 는 iCloud 가 파일을 안 내려받아 지우지 못해 `.venv-broken-old.nosync` 로 옮겨 뒀다.
+- `.env` 13행에 따옴표 `"` 한 줄이 남아 `source .env` 가 실패했다 → 그 줄만 삭제. **키는 여전히 비어 있다.**
+- `web/backend/.gitignore` 추가(`.venv` 링크, `*.nosync/`).
+
+**1. judgment `endedAt`** — `main.py` `post_submission` 에 `ended_at = COALESCE(ended_at, 제출시각)`.
+- 확인: 판단 실습 생성(endedAt null) → 제출 → endedAt = submittedAt
+- 확인: 정렬 실습 생성 → WS 150샘플 → 확정 → 1.5초 뒤 제출 → endedAt 이 확정 시각 그대로(제출 시각과 다름)
+
+**2. `scenario` 최상위** — `repo.py` `course_row_to_dict` 에 한 줄. `content` 는 그대로.
+- 확인: `GET /api/courses/defect-report` 최상위 scenario 6키 / `content.scenario` 유지 / `photo-align` 은 `scenario: null`
+
+**3. 기준2 축 간섭 modifier `adjust:-1` → `capAt:1`** — `course_data.py` 데이터만. `scoring.py` 무수정.
+- 확인: 시드 전후 14건 `rubric_scores_json` diff 없음
+- 확인: 채점기 직접 호출 — together+간섭 1(이전 규칙이면 0) / position_first·rotation_first+간섭 1 / 간섭 없음 2
+
+**4. `alignment.tiltControls`** — `course_data.py` alignment 안에 W/S·A/D 2항목. 코드 수정 없음.
+- 확인: `GET /api/courses/photo-align` 의 `alignment.tiltControls` 2항목, `controls` 는 3개 그대로
+
+**FRONT 가 지울 수 있게 된 것**
+- `scenario` 를 `content.scenario` 에서도 찾는 보정 코드 → 이제 최상위 `course.scenario`
+- `src/data/controllerSettings.ts` 의 `KEYBOARD_TILT_CONTROLS` 상수 → `course.alignment.tiltControls`
+
+**HEADER 확인 필요**
+- `실습유형_설계.md` 10.3 의 checkItems 순서 변경이 서버에 반영되어 있지 않다.
+  `course_judgment.py` 와 DB 의 checkItems 가 `wedge,focus,contam,coat,history` 로 **recommendedOrder 와 똑같다.**
+  서버가 권장 순서를 그대로 내려보내는 상태이며, 지금은 FRONT 의 섞기 코드만 막고 있다.
+  이번 지시 목록에 없어서 고치지 않았다. 설계서 7.3 순서(coat,wedge,history,focus,contam)로 바꾸면 데이터 한 곳이고,
+  채점은 recommendedOrder 만 보므로 판단 시드 점수는 바뀌지 않는다.
+
+검증용 테스트 시도(u-6)가 DB 에 남아 시드를 한 번 더 돌려 지웠다(최종 14건 점수 다시 동일 확인).
+LLM 실제 호출은 여전히 없다(API 키 없음).
+
+---
+
 ## 2026-09-13 — BE 6차: 채점을 데이터로 (A) · exercise_type (B) · judgment 실습 (C)
 
 `기획/설계/실습유형_설계.md` 규격대로 A → B → C 순서로 진행했다.

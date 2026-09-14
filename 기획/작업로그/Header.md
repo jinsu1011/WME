@@ -5,6 +5,54 @@
 
 ---
 
+## 2026-09-14 — BE 7차 결과 확인 · checkItems 미반영 발견
+
+- **BACK 보고 4건을 코드·실행 중 서버로 확인 — 전부 일치**: `main.py:289` `COALESCE(ended_at, ?)` /
+  `repo.py:126` `scenario` 최상위(defect-report 있음, photo-align null) / `course_data.py:93` `capAt: 1` /
+  `alignment.tiltControls` 2항목 + 기존 controls 3개. 서버는 14:25 재시작돼 반영 상태
+- **설계서 10.3 이 문서에만 반영돼 있었다(HEADER 결함).** 9/13 에 "순서를 바꿨다"고 적었지만 서버 데이터는
+  권장 순서와 같은 그대로였다. BACK 이 발견. 결정은 유지 → `BACK.md` 0번으로 지시, 설계서 10.3 에 정정 기록
+- `DB설계.md` 불일치 2곳 수정 — defect-report "준비 중" → 실습 가능, 행 수 enrollments 17 · attempts 14
+- BACK 이 FRONT 에 넘긴 2건(보정 코드 `scenario`, 상수 `KEYBOARD_TILT_CONTROLS`)을 PROGRESS FRONT 항목으로. `initialOrder` 는 유지
+- **보고에 없던 변경 발견**: `web/frontend/node_modules` 가 `deps.nosync/node_modules` 링크로 바뀌어 있고(14:08),
+  링크 대상은 불완전하다 — 패키지 폴더 이름은 있으나 `vite/bin` 이 없고 `.bin` 이 비어 있다. 실행 중인 dev 서버(14:00·14:08 시작)는 떠 있을 때 불러와 동작 중이지만 **새로 띄우면 실패할 수 있다.**
+  빈 충돌 사본 `node_modules 2` 도 생겼다. FRONT 폴더라 HEADER 는 손대지 않고 사용자에게 보고
+- **문서 최신화** — 루트 `README.md`(미착수·부품 미확보 → 현재 상태, 실행을 server 모드로),
+  `PROJECT_HEAD.md` 0절(서비스 코드 없음 → 현재 상태, 옛 컨셉 절 경고), `HEADER.md`·`FRONT.md` 프롬프트,
+  `API명세서.md` 분석기 경로(`analysis.py` → `analyzers/alignment.py`). 그 뒤 사용자 요청으로 커밋·푸시
+- `web/backend/README.md` 에도 옛 내용(REST 10, `analysis.py`)이 있으나 BACK 폴더라 BACK 에 넘김
+- BACK 보고는 "개인 맥북"이라 적었으나 서버 프로세스가 이 컴퓨터에서 떠 있어 **같은 컴퓨터·같은 폴더의 동시 세션**으로 보인다
+
+---
+
+## 2026-09-14 (회사 컴퓨터) — 환경 구축 · 옛 상태 정리 · 일정 정정
+
+- **환경 구축**: 프론트 `npm install`, 백엔드 venv + requirements, `app.seed` 완료.
+  iCloud 폴더에서 `.venv/bin/python` 링크가 사라지는 문제 → `.venv` 를 `.venv.nosync` 링크로 두는 방식으로
+  동작 확인(이 구성은 동시에 돈 다른 프로세스가 만든 것으로 보인다). 서버 8000 + 화면 5174(server 모드)에서
+  `/api/health`, 담당자 현황, 학습자 8명이 프록시를 거쳐 오는 것까지 확인. GitHub 원격에 새 커밋 없음
+- **`PROGRESS.md` · `이어서작업.md` 옛 내용 정리** — 실제 코드·DB 와 대조해서 고침:
+  * "프론트↔백엔드 연결 미완" → 연결 완료 (mock/server 전환)
+  * REST 10개 → **15개** + WS 1 (`main.py` 라우트 직접 확인)
+  * 배정 16 → **17**, 시도 12 → **14**(정렬 12 + 판단 2), 과정 5개 중 실습 가능 2 (DB 직접 조회)
+  * "센서 부품 미확보" → UNO + MPU6050 수신 성공, 실측은 미완
+  * **새 컴퓨터 실행 절차의 `npm run dev` 는 mock 모드(5173)였다** → `dev:server`(5174) 로 정정.
+    그대로 따라 하면 서버가 떠 있어도 화면은 시드 데이터를 보여 줘서 연결이 안 된 것처럼 착각할 수 있었다
+- **BACK 남은 4건을 코드로 확인 — 전부 미반영**: judgment `ended_at` 저장, `scenario` 최상위,
+  `axisInterference` `adjust:-1` → `capAt:1`, 기울기 키 안내의 과정 설정 이동
+- **일정 정정**: 수업은 **9/15 시작**(사용자 확인). 제출물 양식 파일 미수령.
+  3일차 = 9/17 로 보이나 계산값이라 1일차에 확인하도록 표시
+
+- **HEADER 결정 변경 — 기울기 키 안내 위치: `control.keyboard` → `alignment.tiltControls`**.
+  화면은 기울기 키를 키보드 모드일 때만 기존 안내와 따로 보여 준다(`AlignmentExercise.tsx` 667행).
+  `alignment.controls` 에 섞으면 센서 모드에도 보이고, `control.keyboard` 는 숫자 계수 자리라 문구를 섞지 않는다
+- `기획/프롬프트/BACK.md` 전면 갱신 — 남은 4건마다 원인·고칠 위치·확인 방법, 시드 재실행 시 기록이 지워진다는 경고,
+  옛 수치(REST 11·배정 16·`analysis.py`) 정정. 이전 문서의 "기준1 modifier" 는 **조정 순서(criterion 1, 루브릭 두 번째)** 가 맞다
+
+**다음**: DB설계·API명세서에 exercise_type·judgment 반영 → `화면설계.md` → `PROJECT_HEAD.md` 0절·5절 정리 → 기술서(양식 받은 뒤)
+
+---
+
 ## 2026-09-14 — 3D 장비 뷰 결과 확인 · 프롬프트 최신화
 
 FRONT 가 3D 장비 뷰·노광/현상 연출·키보드 기울기·시점 회전까지 끝냈다. 판단과 기록:

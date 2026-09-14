@@ -223,7 +223,7 @@ FastAPI 기본 형식이다.
 
 ### 서버가 확정 시점에 하는 일
 
-1. `measurements` 를 읽어 **규칙 기반 정렬 경로 분석**을 돌린다 (`app/analysis.py`, 학습 모델 아님)
+1. `measurements` 를 읽어 **규칙 기반 정렬 경로 분석**을 돌린다 (`app/analyzers/alignment.py`, 학습 모델 아님)
 2. 보정 구간·과잉 보정 구간을 `events` 에 저장한다
 3. `summary_json` 을 만든다 — 최종 오차, 소요 시간, 보정 횟수, 과잉 보정 횟수, 수렴 여부, 경로 분석
 4. **`converged` 를 서버가 직접 계산한다.** 화면이 보낸 값을 믿지 않는다

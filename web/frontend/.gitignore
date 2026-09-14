@@ -8,6 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+# node_modules 는 deps.nosync/node_modules 를 가리키는 링크다(iCloud 동기화 제외용).
+# 실제 폴더 이름이 node_modules 여야 Vite 가 라이브러리로 인식한다
+*.nosync/
 dist
 dist-ssr
 *.local

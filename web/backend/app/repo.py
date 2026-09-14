@@ -122,6 +122,8 @@ def course_row_to_dict(row: sqlite3.Row) -> dict:
         "alignment": content.get("alignment"),
         # 기울기 → 이동 변환 계수. 계산은 프론트가 하고 계수는 과정 설정값이다.
         "control": content.get("control"),
+        # 상황 판단 실습의 시나리오. 없는 유형은 None.
+        "scenario": content.get("scenario"),
         "version": row["version"],
         # 서버 내부에서 쓰는 원본. 검증(orderOptions·tolerance)이 이걸 본다.
         "content": content,

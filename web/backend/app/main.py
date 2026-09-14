@@ -281,12 +281,15 @@ def post_submission(attempt_id: str, body: SubmissionBody, conn=Depends(db)) -> 
     summary = analyzer.on_submit(course, json.loads(row["summary_json"] or "null"),
                                  answer, elapsed_ms)
     scored = score_attempt(course, summary)
+    # ended_at 은 정렬 확정(_finalize)에서 저장된다. 확정 단계가 없는 유형(judgment)은
+    # 비어 있으므로 제출 시각을 넣는다. 이미 있으면(정렬 실습) 확정 시각을 그대로 둔다.
     conn.execute(
         """UPDATE attempts SET answer_json = ?, status = 'submitted', summary_json = ?,
-           rubric_scores_json = ?, rubric_source = 'rule' WHERE id = ?""",
+           rubric_scores_json = ?, rubric_source = 'rule',
+           ended_at = COALESCE(ended_at, ?) WHERE id = ?""",
         (json.dumps(answer, ensure_ascii=False),
          json.dumps(summary, ensure_ascii=False),
-         json.dumps(scored["levels"]), attempt_id))
+         json.dumps(scored["levels"]), answer["submittedAt"], attempt_id))
     return repo.attempt_to_dict(conn, repo.get_attempt_row(conn, attempt_id),  # type: ignore[arg-type]
                                 include_samples=False)
 

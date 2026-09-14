@@ -90,7 +90,7 @@ SCORING = [
             "unknown": "허용 범위 안으로 들어오지 않아 조정 순서를 읽을 수 없습니다.",
         },
         "modifiers": [
-            {"when": "axisInterference", "adjust": -1,
+            {"when": "axisInterference", "capAt": 1,
              "reason": "한 축을 맞추는 동안 다른 축이 함께 움직인 구간이 있습니다."},
             {"when": "reportedOrderMismatch", "capAt": 1,
              "reason": "적어 낸 순서와 기록에서 읽힌 순서가 다릅니다."},
@@ -170,6 +170,12 @@ CONTENT = {
             {"keys": "방향키 ← → ↑ ↓", "effect": "위치(X·Y) 이동"},
             {"keys": "Q / E", "effect": "회전(θ) 조정"},
             {"keys": "Shift + 키", "effect": "더 천천히 움직이기"},
+        ],
+        # 키보드 모드에서만 화면이 따로 보여 주는 기울기 키 안내(HEADER 결정).
+        # controls 에 섞으면 센서 모드에서도 보인다.
+        "tiltControls": [
+            {"keys": "W / S", "effect": "앞뒤로 기울이기"},
+            {"keys": "A / D", "effect": "좌우로 기울이기"},
         ],
         "controllerNotice":
             "센서를 붙인 웨이퍼 모형은 실제 장비의 조작기를 대신하는 교육용 컨트롤러입니다. "

@@ -23,7 +23,7 @@ info:
 
     **AI 피드백** — LLM 이 실패해도 답변과 규칙 기반 점수는 보존된다(503 + `answerPreserved: true`).
 
-    **데이터 모델과의 관계** — 응답의 배열 필드는 ERD(`WME-DB.dbml`, 논리 설계)의 하위 테이블 행이다.
+    **데이터 모델과의 관계** — 응답의 배열 필드는 ERD(`9반_P286_김진수_WME-DB.dbml`, 논리 설계)의 하위 테이블 행이다.
     예: `Course.steps[]` = course_steps, `Course.rubric[]` = rubric_criteria, `Enrollment.stepsCompleted` = enrollment_steps,
     `Attempt.rubricScores[]` = attempt_rubric_scores, `Answer.orderedIds` = attempt_check_orders,
     `Feedback.good/improve/cannotJudge` = feedback_items, `Feedback.eventIds` = feedback_evidence.

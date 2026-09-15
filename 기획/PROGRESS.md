@@ -16,17 +16,17 @@
 - [x] `기획/과제요건.md` — 과제 PDF 요약, **5.4 9반 평가기준**(마감 13:40·파일명·발표 = 기술서), 5.5 참고자료(이전 기수, 참고만)
 - [x] `기획/설계/서비스개요.md` — 개요·문제 정의·액터·FR·예외·고려사항 (9/15 FR-M01·M02 실제 화면에 맞춤)
 - [x] `기획/설계/화면설계.md` — 화면 13개·흐름·UI↔API↔DB 대조표·캡처 목록. 9/15 실제 화면에 맞춤, **불일치 M1~M4 모두 해결**
-- [x] `제출/WME-API.yml` — 실제 서버 대조 완료(BACK 10차). 9/15 반영: feedback/viewed 응답, 재확정 설명, WS `aligned`, LLM 성공 필드, summary 필수 필드.
+- [x] `제출/9반_P286_김진수_WME-API.yml` — 실제 서버 대조 완료(BACK 10차). 9/15 반영: feedback/viewed 응답, 재확정 설명, WS `aligned`, LLM 성공 필드, summary 필수 필드.
   **실제 응답 23건 스키마 자동 검증 실패 0**, swagger-parser·redocly 오류 0
-- [x] `제출/WME-DB.dbml` — 서버 매핑 대조 완료. 19테이블 · 146컬럼 · enum 14 · 관계 23 · M:N 4. dbdiagram.io `0 errors`
-- [x] `제출/도구캡처/Swagger_API목록.png`
+- [x] `제출/9반_P286_김진수_WME-DB.dbml` — 서버 매핑 대조 완료. 19테이블 · 146컬럼 · enum 14 · 관계 23 · M:N 4. dbdiagram.io `0 errors`
+- [x] `제출/자료/도구캡처/Swagger_API목록.png`
 - [x] `제출/체크리스트.md` 갱신
 
 ### 프론트엔드 (FRONT, 9/15)
 - [x] **M1** 진도 기록 `PATCH /progress` · **M2** 피드백 열람 `POST /feedback/viewed` 연결
 - [x] **M4** 판단 결과 지표를 YAML 모양(`summary.scoringMetrics`)으로 맞춤 — mock·server 동일
 - [x] 과정 문구(정렬 단계 설명·사전 지식)를 서버와 같게
-- [x] **UI 흐름도 캡처 25장** `제출/캡처/` (C-01~C-23, C-23 2장, C-25 AI 피드백 성공). C-24 센서는 보드 없어 생략
+- [x] **UI 흐름도 캡처 25장** `제출/자료/캡처/` (C-01~C-23, C-23 2장, C-25 AI 피드백 성공). C-24 센서는 보드 없어 생략
 - [x] 타입 검사·빌드 통과, 린트 경고 1(기존 `demo.tsx`)
 
 ### 백엔드 (BACK, 9/15)

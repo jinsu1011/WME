@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-09-15 오전 (회사 맥북) — 환경 구축 · 과제 PDF 재검토 · 결정 17
+
+- `git pull`(이미 최신 b6c7ca8, iCloud 로 .git 까지 동기화돼 있었음, `git fetch` 로 GitHub 과 동일 확인) → `./시작.sh` 첫 실행 빨간 줄: `web/frontend/node_modules 3`(tsbuildinfo 2개만) → 지우지 않고 세션 임시 폴더로 이동 → 재실행 `준비 완료`. 회사 맥북 시작.sh 첫 정상 확인
+- 과제 PDF 26쪽 재검토: 평가 범위 = 기획·설계(2쪽), 창의성 X·UI 캡처 PDF 필수(5쪽), 예시는 가로 슬라이드·ERD 6테이블(16~25쪽). YAML 에 securitySchemes 없음 확인
+- 채점 기준 대조표 작성(사용자 보고): 설계 내용은 대부분 충족, 남은 것은 캡처·PDF·도구 확인·BACK/FRONT 대조
+- **결정 17 범위 동결·안정화 모드** 기록. ERD 19테이블 유지(사용자 확정)
+- BACK·FRONT 지시문 전달: 병행 → BACK 시드 재적재 → FRONT 캡처 순서
+- **제출 파일 도구 확인**: YAML swagger-parser·redocly 오류 0 (nullable 옆 `type: object` 7곳 추가). Swagger Editor 사이트는 에디터에 넣지 못해 Swagger UI 로컬 렌더링으로 `제출/도구캡처/Swagger_API목록.png`. DBML dbdiagram.io `0 errors`, ERD 그려짐
+- **BACK 10차 대조 반영** (서버 코드 수정 없음, 결정 17 — 2번 재확정은 서버 409 로 막지 않고 YAML 을 실제에 맞춤):
+  YAML — `/feedback/viewed` 200 → `FeedbackViewedResponse{attemptId, feedbackViewedAt}` 신설, Conflict 설명에서 재확정 삭제·feedback_failed 재제출 409 추가, WS `measured`→`aligned`, 재제출 허용·inputDevice 기본 keyboard·feedbackError JSON 문자열 설명 /
+  DBML — `enrollment_steps.completed_at` null + [설계], `events.axis` 값 (xy, theta), `attempts.order_option_id` 에 API 는 option_key 문자열로 주고받는다는 note
+  남긴 △: 201 응답 `samples: []`, convergence `unknown`, tolerance 두 벌, 앱에만 있는 content_json 필드
+- 9반 평가기준 PDF 반영(과제요건 5.4): 마감 13:40, 파일명 `9반_P286_김진수_WME-*`(결정 18), 발표는 개요 PDF 로. 데모 이름 최태원·SK 하이닉수는 사용자 결정으로 유지
+- FRONT 캡처 24장 대조 → 화면설계·서비스개요를 실제 화면에 맞춤(S-05·S-07a·S-09·S-10·S-11, M1·M2 ✅, M4 기록). M4(판단 지표 경로)·대기방 문구 2개는 FRONT·BACK 수정 지시
+- 참고자료(이전 기수) 요약 과제요건 5.5 — 참고만. `.gitignore` 에 `/참고자료/`
+- ERD PNG 내보내기는 dbdiagram 로그인 필요 → 사용자에게 맡김
+- **LLM 실제 호출 성공**(BACK, gpt-4.1-mini) → 성공 응답의 추가 필드 YAML `Feedback` 에 반영(rubricScores·llmModel·modelVersion·courseVersion·inputFingerprint·reused, `[llm 일 때만]`), DBML `attempts.feedback_llm_model`·`feedback_input_fingerprint` 추가(146컬럼). modelVersion 은 config `MODEL_VERSION` 과 같은 값 확인. 검사 오류 0
+- BACK 완료 보고 결정: ① Feedback 추가 필드 → YAML·DBML 반영 완료 ② 판단 과정 prerequisites `photo-basics` id → BACK 에 문장으로 수정 지시(대기방 정렬 과정과 같은 처리, 캡처 영향 없음) ③ `C-19b_결과_AI피드백_참고.png` → **유지**, 개요 PDF 에 "AI 피드백 성공" 근거로 사용 후보(M4 수정 후 지표 1번째·0·3/3 정상, `AI 채점`·`AI 생성` 배지, 키·개인정보 없음 확인) ④ phase API 에 재확정 시 재분석 설명 추가(inputDevice 기본값은 앞서 POST /attempts 설명에 추가됨). YAML 검사 오류 0
+- BACK 끝 보고 GET 대조: prerequisites 두 과정 문장, align 단계 새 문장, 시도 14·실패 0, llmConfigured true, 서버 변경 3파일 4줄 — 보고와 일치
+- FRONT 끝 보고: 캡처 25개. C-07(새 단계 문장·사전 지식 문장), C-17(1번째·0·3/3, `권장 순서와 가까움`), C-19(지표 정상 + `생성 실패` 카드·답변 보존·다시 시도) 직접 열어 확인. C-19 옆 연습 목록 4건은 재적재 전 촬영이라 C-17(2건)과 다름 — 허용
+- 개요 PDF 초안 시작: `제출/개요PDF/slides.html` (1920×1080 HTML 슬라이드 → PDF 인쇄 방식). 사용자 이전 발표자료 스타일 참고. 1쪽 표지·2쪽 STORY 01 레이아웃, 스토리 도입(입사 → 경험 없음 → 실수 → 비용 → 연습 필요) 수치 출처 조사
+- **전체 점검**: 프론트 tsc 통과·oxlint 경고 1(기존), 백엔드 py_compile OK·TODO 없음, DB integrity ok·FK 위반 0, GET 14종 상태코드 정상, 화면이 부르는 경로 = YAML = 서버 라우트 일치.
+  **실제 응답 23건을 YAML 스키마로 자동 검증** → summary `oneOf` 가 정렬·판단 둘 다에 맞아 실패 19건 발견 → `AlignmentSummary.required[finalDx, finalDy, finalDTheta, converged]`, `JudgmentSummary.required[scoringMetrics]`+`scoringMetrics.required[4]` 추가 → **실패 0**. swagger-parser·redocly 오류 0
+- 화면설계 5절: 배지 조건에 대기방 추가, C-23 `4.4 / 5초`, C-24 생략 사유, **C-25 추가**, 최종 캡처 목록 / 4절 M4 ✅. 체크리스트 C-2 갱신
+
+---
+
 ## 2026-09-15 새벽 (집 맥북) — FRONT 센서 보고 결정 · 두 노트북 정리 · 회사용 프롬프트
 
 - c1cb566(FRONT 센서 + 시작.sh/정리.sh) 코드 대조: 센서 모드 X/Y 고정·비튼 각도 그대로·실습 성공 5초 확인. 키보드 모드는 기울면 회전 잠김 유지(`AlignmentExercise.tsx:382`)

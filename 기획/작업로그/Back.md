@@ -5,6 +5,198 @@
 
 ---
 
+## 2026-09-15 — BE 12차: course_judgment.py prerequisites 문장화 (HEADER 결정) · BACK 작업 끝
+
+- 107행 판단 과정 `prerequisites` `["photo-basics"]` → `["포토공정 입문 과정의 정렬 개념"]`. 다른 값 무수정(`git diff --stat` 1줄)
+- `course_judgment` 는 `seed.py`·`course_data.py` 만 읽고, `course_data` 도 `seed.py` 만 읽는다 → 서버 재시작 불필요
+- 시드 재적재 → 확인(실제 조회): 학습자 8 · 배정 17 · 과정 5 · 시도 14 / 14건 점수 처음과 diff 없음
+- API 확인: `GET /api/courses/defect-report` `prerequisites` = `["포토공정 입문 과정의 정렬 개념"]`, `recommendedOrder` 그대로 / `photo-align` 은 11차 문장 유지
+- 네트워크: 유선 → Wi-Fi 전환 뒤 localhost health 200, OpenAI `gpt-4.1-mini` 조회 200 (피드백 호출·DB 기록 없음)
+- 최종 상태: 서버 8000 켜짐(--reload 없음), **`llmConfigured: true`**(OpenAI gpt-4.1-mini), DB 는 깨끗한 시드. 오늘 서버 코드 변경은 `course_data.py` 2줄 + `course_judgment.py` 1줄 + README 1줄. 커밋 안 함
+
+---
+
+## 2026-09-15 — C-19 지원: 키 없이 재기동 → 재적재 → 키 넣고 재기동 (HEADER 지시)
+
+- FRONT "C-19 준비" 뒤 서버를 `source .env` 없이(키 환경변수 3종 제거) 재기동 → `GET /api/health` **`llmConfigured: false`** 확인 → FRONT C-19 촬영(503)
+- FRONT C-19 끝 → `python -m app.seed`. 재적재 전 시도 17건 = 시드 14 + `en-u-6-defect-report-a1`(BACK LLM 테스트) + `e-u-1-judgment-a3`(FRONT, AI 피드백 성공·C-19b) + `e-u-1-judgment-a4`(FRONT, 피드백 실패·C-19)
+- 확인(실제 조회): 학습자 8 · 배정 17 · 과정 5 · 시도 14 / llm·failed 기록 0 / `e-u-1-judgment` in_progress 복귀 / 14건 점수 재적재 전후 diff 없음 / API `GET /api/attempts` 14건
+- 서버를 `source .env` 로 재기동(8000, --reload 없음) → **`llmConfigured: true`** (OpenAI, gpt-4.1-mini)
+- 서버·제출 문서·캡처 파일 무수정. 서버 켜 둔 채 대기
+
+---
+
+## 2026-09-15 — LLM 실제 호출 1회: 실패(인증) · M4 뒤 재적재 완료 — FRONT 캡처 가능
+
+**LLM 호출 1회 (HEADER 지시대로 실패해도 고치지 않음)**
+- 사용자가 `.env` 에 키 저장 → 서버 종료 후 `source .env` 로 재기동(8000, --reload 없음) → `GET /api/health` `llmConfigured: true`
+- 판단 실습 u-6 시도 생성 → 제출 200(규칙 점수 [2,2,2,2]) → `POST /api/attempts/{id}/feedback` **1회**
+- 결과: **503** `AI 피드백 생성에 실패했습니다: LLM 인증에 실패했습니다. API 키가 유효한지 확인하세요.` (`retryable: true`, `answerPreserved: true`)
+- 실패 뒤: status `feedback_failed`, 답변·규칙 점수 보존. **응답·조회·DB(feedback_error, feedback_json) 어디에도 키 값 없음** (스크립트로 문자열 포함 검사)
+- 원인 추정(값은 보지 않고 형식만 확인):
+  - 키 접두사가 OpenAI 형식(`sk-proj-`) → 서버가 provider `openai`, base_url `https://api.openai.com` 로 호출 → OpenAI 가 401/403 을 돌려줌 = **그 키가 OpenAI 에서 거부됨**(만료·폐기·결제/프로젝트 권한 등, 서버 쪽에서는 구분 불가)
+  - 추가 문제: `.env` 의 `WME_LLM_MODEL` 이 `claude-sonnet-5` 로 되어 있다. OpenAI 키로는 이 모델을 부를 수 없어 **키가 유효해도 다음 단계에서 실패할 것**
+  - 키 끝에 줄바꿈 1개(12행 닫는 따옴표가 13행에 있음) — 서버가 앞뒤 공백을 지우므로 이번 실패 원인은 아님
+- 서버·`.env` 는 고치지 않았다. 다시 시도하려면 사용자/HEADER 가 ① 유효한 키인지 ② OpenAI 키면 `WME_LLM_MODEL` 을 비우거나 gpt 모델로, Anthropic 키(`sk-ant-`)면 그대로 — 를 정한 뒤 BACK 이 서버 재기동·1회 재호출
+
+**추가 확인 (사용자 결정: ChatGPT/OpenAI 사용)**
+- `.env` 의 `WME_LLM_MODEL` 을 `""` 로 비움(키 줄은 읽지 않음) → 서버 설정 provider `openai` · model `gpt-4.1-mini`(코드 기본값) · base_url `https://api.openai.com`
+- 피드백 호출 없이 키만 확인: `GET https://api.openai.com/v1/models` → **401 `invalid_api_key`** → **키 자체가 OpenAI 에서 무효**. 새 키가 필요하다
+- 서버는 아직 옛 설정으로 떠 있다. 새 키 저장 후 재기동 → 피드백 1회 재호출 예정
+
+**새 키로 재시도 — 성공 (사용자 지시로 2번째 호출, gpt-4.1-mini)**
+- 사용자가 새 OpenAI 키 저장 → 호출 전 `GET /v1/models/gpt-4.1-mini` **200** 확인 → 서버 재기동(`source .env`, 8000, --reload 없음) → `llmConfigured: true`
+- 판단 실습 u-6 시도 `en-u-6-defect-report-a1` 생성 → 제출 200(규칙 [2,2,2,2]) → `POST /feedback` 1회 → **200**
+- 확인(실호출): status `feedback_ready`, feedbackStatus `ready`, **`rubricSource = llm`**, rubricScores [2,2,2,2], **`feedback.generatedBy = llm`**, `llmModel = gpt-4.1-mini`, eventIds `[]`(판단 실습은 구간 없음, 검증 통과), good 3 · improve 2 · nextStep · cannotJudge 3, DB `feedback_error` NULL
+- **키 노출 없음**: 응답·조회·DB(feedback_json, feedback_error) 문자열 검사
+- YAML 대조(10차 △ 확정): 성공 응답의 `feedback` 에 YAML `Feedback` 7필드 외 `rubricScores · llmModel · modelVersion · courseVersion · inputFingerprint · reused` 가 더 온다 → HEADER 판단(YAML 에 추가 또는 "내부 필드" 설명)
+- 정렬 실습 LLM 호출은 하지 않음(1회 제한)
+- 테스트 기록 `en-u-6-defect-report-a1`(+ 배정 `en-u-6-defect-report`)이 DB 에 남아 있다. FRONT 캡처 중이라 재적재는 보류 — 캡처 끝나면 재적재
+
+**M4 뒤 시드 재적재**
+- FRONT "작업 끝" 보고 뒤 `python -m app.seed` (재적재 전 시도 18건 = 시드 14 + FRONT M4 테스트 3 + LLM 테스트 1)
+- 확인: 학습자 8 · 배정 17 · 과정 5 · 시도 14 · 피드백 실패 기록 0 / 14건 점수 재적재 전후 diff 없음
+- BE 11차 문구 반영 확인: `GET /api/courses/photo-align` 의 `prerequisites` = `["장비 기초 과정의 정렬 개념"]`, `align` summary 새 문장
+- 서버 8000 켜 둔 채 대기 (키가 들어간 상태로 떠 있음 — 피드백 요청 시 503 인증 실패 문구가 나온다)
+
+---
+
+## 2026-09-15 — BE 11차: course_data.py 문구 2곳 (HEADER 결정 17 범위 안)
+
+- 29행 `align` 단계 summary → "방향키로 위치(X·Y)를, Q/E 로 회전(θ)을 맞춰 두 마크를 겹칩니다. 모형 컨트롤러를 쓰면 위치는 가운데 고정, 비틀어서 회전합니다."
+- 134행 `prerequisites` `["equipment-basics"]` → `["장비 기초 과정의 정렬 개념"]`
+- 그 밖의 값·구조·버전 문자열 무수정 (`git diff --stat` 2줄 변경). import 확인
+- `course_data` 는 `seed.py` 만 읽는다 → **서버 재시작 불필요, 화면 반영은 시드 재적재 후**. 채점 규칙은 안 바뀌어 점수 영향 없음
+- 재적재는 FRONT "M4 끝" 신호 뒤에 한다 (아직 안 함)
+- HEADER 참고: `course_judgment.py` 107행 판단 과정 `prerequisites` 도 `["photo-basics"]` id 그대로다. 이번 지시 범위 밖이라 두었다
+
+---
+
+## 2026-09-15 — 재적재 완료 — FRONT 캡처 가능
+
+- FRONT M1·M2 보고를 받은 뒤 `python -m app.seed` 실행 (서버 8000 켠 채, 재시작 없음)
+- 지운 테스트 기록: `e-u-6-stage-a1`, `en-u-6-defect-report-a1`(BACK), `e-u-1-judgment-a3`, `e-u-1-stage-a4`(FRONT), `e-u-1-judgment` completed·`e-u-6-stage` 진도 변경
+- 확인(실제 조회): 학습자 8 · 담당자 1 · 배정 17 · 과정 5 · 시도 14 / 재적재 전후 14건 `rubric_scores_json`·`rubric_source` diff 없음 /
+  `e-u-1-judgment` in_progress 복귀 / API `GET /api/attempts` 14건, inputDevice 전부 keyboard, feedbackStatus none·ready 만(실패 기록 없음)
+- 서버 8000 켜 둔 채 대기. LLM 키 없음
+
+---
+
+## 2026-09-15 — BE 10차: 제출 YAML·DBML ↔ 실제 서버 대조표 (결정 17, 서버·제출 문서 무수정)
+
+- 서버 8000 `--reload` 없이 기동, `web/backend/README.md` 12행 `--reload` 삭제
+- 방법: 실행 중 서버에 실제 요청(httpx·websockets 스크립트) + 시드 DB 조회. **"실호출"= 실제로 불러 확인, "코드"= 코드만 읽음**
+- 테스트 기록: `e-u-6-stage-a1`(정렬), `en-u-6-defect-report-a1`(판단), `e-u-6-stage` 진도 변경 → **FRONT M1·M2 끝나면 시드 재적재로 정리** (재적재 전 14건 점수 저장해 둠)
+- 요약: **불일치 ✗ 5건 / 부분 △ 8건**, 나머지 일치. 서버 코드 수정 필요 판단 항목 없음(모두 YAML·DBML 수정으로 해결 가능)
+
+### A. API (WME-API.yml) — POST·PATCH 응답
+
+| 항목 | YAML 내용 | 실제 서버 | 일치 |
+|---|---|---|---|
+| POST /attempts 201 (정렬) | Attempt, status `aligning` | 201, 필수 16키 누락 0·추가 키 0, `aligning` (실호출) | ✅ |
+| POST /attempts 201 (판단) | `aligned` 에서 시작 | 201, `aligned` (실호출) | ✅ |
+| POST /attempts 응답의 samples | samples 는 GET includeSamples=true 일 때만 | 201·phase 200 응답에도 `samples: []` 가 온다 (실호출) | △ YAML 설명 보완 |
+| AttemptCreateRequest.inputDevice | 기본값 표기 없음 | 생략 시 `keyboard` (코드) | △ `default: keyboard` 추가 |
+| POST /phase 200 | Attempt | 200, 필수 누락 0 (실호출) | ✅ |
+| POST /submission 200 (정렬) | Attempt, rubricSource `rule` | 200, `rule`, answer `{orderOptionId, reason, submittedAt}`, samples 없음 (실호출) | ✅ |
+| POST /submission 200 (판단) | Attempt, JudgmentSummary | 200, `summary={durationMs, scoringMetrics{firstPickRank, orderDistance, top3Overlap, answerLength, durationMs, passed}}` (실호출) | ✅ |
+| **POST /feedback/viewed 200** | **Attempt** | **`{attemptId, feedbackViewedAt}` 두 키만** (실호출). FRONT 는 이 API 를 호출하지 않음 | ✗ → **YAML 을 실제에 맞춤 권장** |
+| PATCH /progress 200 | Enrollment | 200, 6키 일치, 전 단계 완료 시 `completed`·completedAt 채움, `completed:false` 로 취소 (실호출) | ✅ |
+| POST /feedback 200 (LLM 성공) | Feedback 7필드 | 키 없어 미호출. 코드상 `rubricScores·llmModel·modelVersion·courseVersion·inputFingerprint·reused` 가 feedback 안에 더 붙음 | △ 코드만 확인, LLM 키 오면 실호출 |
+
+### B. API — 오류 코드·오류 본문 (전부 실호출)
+
+| 항목 | YAML 내용 | 실제 서버 | 일치 |
+|---|---|---|---|
+| 없는 과정으로 시도 생성 | 404 | 404 `과정을 찾을 수 없습니다.` | ✅ |
+| 없는 사용자로 시도 생성 | 404 | 404 `사용자를 찾을 수 없습니다.` | ✅ |
+| 준비 중 과정(coming_soon·preview) 시도 생성 | 409 `아직 실습할 수 없는 과정입니다.` | 둘 다 409 같은 문구 | ✅ |
+| source·inputDevice 잘못, courseId 누락 | 422 ValidationError | 422 detail 배열(loc·msg·type + input·ctx) | ✅ |
+| 없는 시도 (phase·submission·feedback·viewed) | 404 | 네 경로 모두 404 `시도를 찾을 수 없습니다.` | ✅ |
+| 측정 없이 확정 | 422 Error | 422 `측정 데이터가 없어 분석할 수 없습니다.` (마커도 롤백됨) | ✅ |
+| 판단 시도에 confirmed | (명세 없음) | 422 같은 문구 — 422 는 명세에 있음 | ✅ |
+| phase 값 잘못 / tMs 음수 | 422 ValidationError | 422 배열 | ✅ |
+| **이미 확정된 시도 재확정** | **409** (Conflict 설명) | **200. 분석을 다시 돌려 events·summary·ended_at 을 덮어씀** (`can_transition` 이 같은 상태를 허용) | ✗ → **YAML 에서 이 줄 삭제 권장**. 서버를 409 로 바꾸면 코드 수정이라 HEADER 판단 필요 |
+| 확정 전 제출 | 409 `'{status}' 상태에서는 ...` | 409 `'aligning' 상태에서는 답변을 제출할 수 없습니다.` | ✅ |
+| 재제출 (submitted → 다시 제출) | 설명 없음 | 200 허용, 점수 다시 계산. `feedback_ready` 에서도 허용(코드), `feedback_failed` 에서는 409 | △ YAML 설명에 없음 |
+| orderOptionId 누락 / 없는 조정 순서 | 422 Error | 422 `조정 순서를 선택해야 합니다.` / `이 과정에 없는 조정 순서입니다: diagonal` (YAML 예시와 문구 동일) | ✅ |
+| reason 빈값·누락·2001자 | 422 (minLength 1, maxLength 2000) | 422 ValidationError 배열 | ✅ |
+| 판단 항목 누락·중복·없는 항목·orderedIds 누락 | 422 Error | 422 각각 `순서를 정하지 않은 항목이 있습니다` / `같은 항목이 여러 번` / `이 과정에 없는 확인 항목` / `확인 순서를 정해야 합니다.` | ✅ |
+| 제출 전 피드백 | 409 `답변을 먼저 제출해야 ...` | 정렬·판단 모두 409 같은 문구 | ✅ |
+| 키 없이 피드백 | 503 FeedbackError | 503 | ✅ |
+| 503 본문 구조 | `detail{message, detail[], retryable, answerPreserved}` | `{"detail":{"message":"AI 피드백을 만들 수 없습니다...", "detail":[], "retryable":true, "answerPreserved":true}}` | ✅ |
+| 503 뒤 보존 | 답변·규칙 점수 보존 | status `feedback_failed`, feedbackStatus `failed`, answer 그대로, rubricScores [2,2,2,0] 그대로 | ✅ |
+| Attempt.feedbackError | string, nullable | string 이지만 내용이 JSON 문자열 `{"message","detail","retryable"}`. 키 값 없음 확인 | △ 설명에 "JSON 문자열" 추가 |
+| 없는 단계 진도 / stepId 누락 / 없는 배정 | 422 Error / 422 / 404 | 422 `이 과정에 없는 단계입니다: nope` / 422 배열 / 404 `배정을 찾을 수 없습니다.` | ✅ |
+| 명세에 없는 코드가 나오는 경우 | — | 이번 호출에서는 없음 (500 없음) | ✅ |
+
+### C. API — WebSocket (info.description, 실호출 150샘플)
+
+| 항목 | YAML 내용 | 실제 서버 | 일치 |
+|---|---|---|---|
+| ready | `{type, attemptId, source, inputDevice, tolerance{positionPx, rotationDeg}}` | 같은 6키, tolerance 4.0 / 1.0 | ✅ |
+| state | `{type, tMs, dx, dy, dtheta, withinTolerance}` | 같은 키 (`dtheta` 소문자 그대로), 마지막 샘플 withinTolerance true | ✅ |
+| **confirm 응답** | **`measured` : `{type, attempt}`** | **`{"type":"aligned", "attempt":{...}}`** — 이름만 다름, attempt 필수 키 누락 0, 보낸 뒤 서버가 연결 종료. `end` 도 confirm 과 같게 받음. FRONT 는 이 메시지를 읽지 않음 | ✗ → **YAML `measured`→`aligned` 권장** |
+| error | `{type, message}` | 없는 시도·모르는 type 모두 `{type:"error", message}` | ✅ |
+
+### D. API — enum (코드 허용값·DB CHECK 와 비교)
+
+| 항목 | YAML | 실제 | 일치 |
+|---|---|---|---|
+| UserRole / ExerciseType / Course.availability / Enrollment.status | 각 enum | 코드·CHECK 동일 | ✅ |
+| AttemptStatus / feedbackStatus / rubricSource / source / InputDevice | 각 enum | CHECK·Literal 동일 (source·inputDevice·phase 는 422 문구로도 확인) | ✅ |
+| PhaseMarker.phase / Event.type / Sample.quality | 각 enum | 동일 | ✅ |
+| Feedback.generatedBy | llm / mock | 코드 `llm`, 시드 `mock` | ✅ |
+| convergence.order | position_first, rotation_first, together, not_converged, **unknown** | 분석기는 앞 4개만 만든다. `unknown` 은 채점 지표 기본값에만 쓰임 | △ 무해 (지워도 됨) |
+
+### E. DB (WME-DBML 19테이블 ↔ schema.sql 6테이블 + JSON) — 시드 DB 조회
+
+| 논리 테이블 | DBML 내용 | 실제 저장 위치 | 일치 |
+|---|---|---|---|
+| users | id, login_id, password_hash, display_name, role, department | `users` 4컬럼. login_id·password_hash 없음 | ✅ ([설계] 표기대로) |
+| enrollments | id, user_id, course_id, status, completed_at, UNIQUE(user,course) | `enrollments` 동일 + `steps_completed_json` | ✅ |
+| **enrollment_steps** | step_id **integer** FK, **completed_at not null** | `steps_completed_json` = 단계 key 문자열 배열. **단계별 완료 시각은 저장하지 않음** | ✗ completed_at → null 허용 또는 "[설계]" 표기 권장 |
+| courses | 8컬럼, exercise_type default alignment | `courses` 동일 (+content_json, rubric_json) | ✅ |
+| course_guides | objective·prerequisite·material·control·tilt_control / label·content | `content_json.objectives`·`prerequisites`, `alignment.materials`·`controls[keys,effect]`·`tiltControls[keys,effect]` | ✅ |
+| course_steps | step_key, sort_order, title, summary | `content_json.steps[id,title,summary]`, 순서 = 배열 순서 | ✅ |
+| rubric_criteria | short_name, description, sort_order | `rubric_json[short, text]` | ✅ |
+| order_options | option_key, label, hint | `content_json.orderOptions[id,label,hint]` | ✅ |
+| alignment_settings | tolerance_px~controller_notice, control_coefficients | `content_json.alignment{tolerancePx, toleranceDeg, umPerPx, startOffset{x,y,theta}, fieldRadius, markLabels{fixed,moving}, controllerNotice}`, `content_json.control` | ✅ |
+| (alignment_settings 추가 사항) | tolerance 한 벌 | 서버 판정(WS·분석)은 `content_json.tolerance{position_px, rotation_deg}` 를 쓰고, 화면은 `alignment.tolerancePx` 를 씀 — 값은 같음(4 / 1) | △ 같은 값이 두 곳 |
+| judgment_scenarios | situation, order_note, rationale | `content_json.scenario{situation, orderNote, rationale}` | ✅ |
+| scenario_observations | label, value, sort_order | `scenario.observations[label,value]` | ✅ |
+| check_items | item_key, label, display_order, recommended_rank | `scenario.checkItems[id,label]` (배열 순서 = display_order), `recommendedOrder` 순번 = rank | ✅ |
+| attempts 기본 | id~duration_sec, 버전 3개, UNIQUE(enrollment, no), index started_at | `attempts` 컬럼·기본값(input_device keyboard, feedback_status none, duration_sec 0)·인덱스 동일 | ✅ |
+| attempts 정렬 결과 | final_dx~converged | `summary_json.final_dx, final_dy, final_dtheta, duration_ms, adjustment_count, overshoot_count, converged` | ✅ |
+| attempts 판단 결과 | first_pick_rank, order_distance, top3_overlap, passed | `summary_json.scoring_metrics.firstPickRank·orderDistance·top3Overlap·passed` | ✅ |
+| attempts.analysis_detail | 경로 분석·채점 지표 JSON | `summary_json.path_analysis` + `scoring_metrics` | ✅ |
+| attempts.phase_markers | JSON | `phase_markers_json` | ✅ |
+| attempts.order_option_id | **integer** FK → order_options.id | `answer_json.orderOptionId` = **문자열 key** (`xy-then-theta`) | △ 논리 설계로는 성립, 타입 차이 |
+| attempts.reason / submitted_at | 답변 | `answer_json.reason` / `submittedAt` | ✅ |
+| attempts.feedback_error | "분류된 실패 문구만" | JSON 문자열 `{message, detail, retryable}` — 원본 예외·키 없음 (client.py 가 원문 대신 분류 문구, 4xx 본문은 redact) | △ 형식 설명만 다름 |
+| attempts.feedback_generator / next_step / created_at | 컬럼 | `feedback_json.generatedBy` / `nextStep` / `generatedAt` | ✅ |
+| attempts.rubric_source·feedback_status·viewed_at·versions | 컬럼 | 같은 이름 컬럼 | ✅ |
+| attempt_check_orders | check_item_id, position | `answer_json.orderedIds` (순번 = position) | ✅ |
+| attempt_rubric_scores | score, reason | `rubric_scores_json` / reason 은 저장 안 하고 조회 시 계산(`rubricReasons`) | ✅ (Note 에 적힌 대로) |
+| measurements | 15컬럼, quality default ok, UNIQUE(attempt,t_ms), CASCADE | `measurements` 1:1 동일 | ✅ |
+| **events.axis** | 컬럼, 값 **x, y, xy, theta** | 컬럼 아님 — `metrics_json.axis` 에 저장해 응답에서 올림. **실제 값은 `xy`·`theta` 두 가지만** (DB distinct 조회) | ✗ Note 값 목록 수정 권장 |
+| events 나머지 | id, start/end_ms(end>start), type, metrics not null | `events` 동일 (CHECK·DEFAULT '{}') | ✅ |
+| feedback_items | kind good/improve/cannot_judge | `feedback_json.good[]·improve[]·cannotJudge[]` | ✅ |
+| feedback_evidence | event_id (실재 검증) | `feedback_json.eventIds[]` | ✅ |
+| 앱에만 있고 DBML 에 없음 | — | `content_json.tolerance.note`, `content_json.controller{mapping, note, inputDevices}`, `content_json.scoring[]`(채점 규칙), `content_json.feedbackNotes[]`, LLM 성공 시 feedback_json 의 `llmModel·inputFingerprint·reused` | △ 목록만 보고 |
+| DBML 에만 있고 앱에 없음 | — | `users.login_id`, `users.password_hash` [설계], `enrollment_steps.completed_at` | 위 표 참고 |
+
+### HEADER 가 고칠 곳 (의견)
+
+1. YAML `/feedback/viewed` 200 스키마 → `{attemptId, feedbackViewedAt}` (✗)
+2. YAML Conflict 설명에서 "이미 확정된 시도 재확정" 삭제 — 실제로는 200·재분석 (✗). 서버를 409 로 막으려면 코드 수정이라 이번 범위 밖
+3. YAML WebSocket `measured` → `aligned` (✗)
+4. DBML `enrollment_steps.completed_at` not null → null 또는 [설계] (✗)
+5. DBML `events.axis` 값 목록 `x, y, xy, theta` → `xy, theta` (✗)
+6. △ 항목은 선택: inputDevice default, 201 응답의 `samples: []`, 재제출 허용 설명, feedbackError JSON 문자열, `unknown` enum
+
+---
+
 ## 2026-09-14 — BE 9차: web/backend/README.md 옛 내용 정리 (문서만)
 
 - `app/analysis.py` → `app/analyzers/`(`__init__.py` · `alignment.py` · `judgment.py`) 3행으로 교체

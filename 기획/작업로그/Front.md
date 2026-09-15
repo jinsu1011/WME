@@ -5,6 +5,195 @@
 
 ---
 
+## 2026-09-15 오전 마무리 — 판단 과정 prerequisites · 재촬영 확인 · 최종 캡처 목록 (HEADER 마무리 지시)
+
+**1. 판단 과정 mock 데이터**
+- `web/frontend/src/data/courses.ts` 196행 판단 과정 prerequisites `['photo-basics']` → `['포토공정 입문 과정의 정렬 개념']`
+  - BACK `web/backend/app/course_judgment.py` 107행, 서버 응답 `GET /api/courses/defect-report` 와 같은 문장
+- 정렬 과정은 48행 `['장비 기초 과정의 정렬 개념']`(BACK `course_data.py` 134행과 같음, 앞서 반영)
+- 이제 두 과정 모두 mock·server prerequisites 가 같다
+- 타입 검사·빌드 통과(결과 아래 확인 칸)
+
+**M4 에서 고친 파일·줄 (정리)**
+| 파일 | 줄 | 내용 |
+|---|---|---|
+| `src/types/index.ts` | 262~280 | `JudgmentScoringMetrics` 새로 분리, `JudgmentSummary = { durationMs, scoringMetrics }` |
+| `src/pages/Result.tsx` | 85 | 요약 문장 통과 판정 `summary?.scoringMetrics.passed` |
+| 〃 | 597~598 | `확인 순서` 배지 `scoringMetrics.passed` |
+| 〃 | 635~637 | 지표 3칸 `scoringMetrics.firstPickRank / orderDistance / top3Overlap` |
+| `src/lib/judgment.ts` | 30~41 | mock 지표 계산 반환을 `{ durationMs, scoringMetrics: {…} }` 로 |
+| `src/lib/scoring.ts` | 189·191~253 | mock 채점이 `const m = summary.scoringMetrics` 에서 읽음 |
+| `src/data/seedAttempts.ts` | 194~205 | mock 시드 판단 기록 1건도 같은 모양 |
+
+- mock·server 모양을 맞춘 방법: 서버·YAML 은 그대로 두고, **화면 타입을 YAML `JudgmentSummary` 모양으로 바꾼 뒤** mock 이 만드는 값(계산·시드)도 같은 모양으로 만든다. server 응답을 변환하는 코드는 넣지 않았다(두 구현이 같은 모양을 그대로 주고받음)
+
+**2. 재촬영 결과 확인 (코드 수정 없이 파일을 열어 확인)**
+| 캡처 | 찍은 시각 | 확인 결과 |
+|---|---|---|
+| C-07_대기방.png | 10:45:06 | 정렬 단계 "방향키로 위치(X·Y)를, Q/E 로 회전(θ)을 맞춰 두 마크를 겹칩니다. 모형 컨트롤러를 쓰면 위치는 가운데 고정, 비틀어서 회전합니다." / 먼저 보면 좋은 과정 "· 장비 기초 과정의 정렬 개념"(id 아님) ✅ |
+| C-17_결과_판단.png | 10:45:13 | 시드 `e-u-1-judgment-a2`. 첫 항목 순위 1번째 · 순서 차이 합 0 · 상위 3개 일치 3/3, 표 5줄 모두 `같음` ↔ 배지 `권장 순서와 가까움` ↔ 요약 "권장 순서와 가깝게 배열했습니다. 네 기준 모두 충족했습니다." 일치, undefined 없음 ✅ |
+| C-19_결과_피드백실패.png | 10:49:56 | `e-u-1-judgment-a4`(키 없는 서버에서 503 → 새로고침). 지표 1번째·0·3/3, 배지 `권장 순서와 가까움`, undefined 없음 / `생성 실패` 배지 + "피드백을 만들지 못했습니다" 카드 + 답변 보존 안내 + `다시 시도` ✅ |
+- 셋 다 새 모습이라 다시 찍은 장 없음
+- 참고: 파일은 찍은 직후에 열어 확인했고, 그 뒤 파일 수정 시각이 바뀌지 않았다(같은 파일)
+- C-19 옆 "이 과정의 연습" 목록에 a3(AI 성공 기록)까지 4개가 보인다 — 재적재 전에 찍어서 생긴 것, 그대로 둠
+
+**3. 참고 캡처 이름 정리**
+- `C-19b_결과_AI피드백_참고.png` → **`C-25_결과_AI피드백성공.png`** (이름만 바꿈, 10:47:51 촬영, `e-u-1-judgment-a3` 실제 AI 피드백 `AI 생성`)
+
+**최종 캡처 파일 — `제출/캡처/` 25개**
+C-01_로그인 · C-02_로그인_오류 · C-03_실습목록 · C-04_현재상황 · C-05_과정카탈로그 · C-06_실습기록 · C-07_대기방 ·
+C-08_정렬실습_조작중 · C-09_정렬확정_기준안 · C-10_정렬확정_어긋남 · C-11_제출폼 · C-12_모형컨트롤러_연결안됨 · C-13_키보드기울기_회전잠김 ·
+C-14_판단실습_상황 · C-15_판단실습_순서이유 · C-16_결과_정렬 · C-17_결과_판단 · C-18_결과_기준별확인 · C-19_결과_피드백실패 ·
+C-20_교육현황 · C-21_학습자목록 · C-22_학습자별성취도 · C-23_정렬유지_진행 · C-23_실습성공 · C-25_결과_AI피드백성공
+- **C-24 생략** — 실물 센서 보드 없음
+
+**DB 에 남은 기록**
+- 캡처 중 만든 `e-u-1-judgment-a3`(AI 성공)·`e-u-1-judgment-a4`(실패) — **BACK 재적재로 지워진 것 확인**: 지금 `GET /api/attempts?userId=u-1` 은 시드 5건(`e-u-1-stage-a1~a3`, `e-u-1-judgment-a1~a2`)뿐, `/api/health` `llmConfigured: true`
+- 남은 캡처 기록 없음
+
+## 2026-09-15 — M4 판단 결과 지표 모양 맞춤 · 대기방 문구 (HEADER 지시) · 재촬영은 이어서
+
+**M4** — 판단 결과 화면이 순서 지표를 `summary.firstPickRank` 로 읽어 server 모드에서 undefined 가 나오던 것
+- `types` `JudgmentSummary` 를 YAML 모양으로: `{ durationMs, scoringMetrics: { firstPickRank, orderDistance, top3Overlap, answerLength, durationMs, passed } }` (`JudgmentScoringMetrics` 분리)
+- `Result.tsx`: 요약 문장의 통과 판정, `확인 순서` 배지, 지표 3칸을 `summary.scoringMetrics.*` 로
+- mock 도 같은 모양: `lib/judgment.ts` `judgmentMetrics` 반환, `lib/scoring.ts` `scoreJudgment` 읽는 곳, `data/seedAttempts.ts` 시드 1건
+- 서버·YAML 은 안 바꿈
+- ⚠️ mock 모드에서 **이전에 브라우저(localStorage)에 저장된** 판단 기록은 옛 모양이라 결과 화면이 깨질 수 있다. 시드 기록과 새 기록은 정상
+
+**확인**
+- 타입 검사·빌드 통과, 린트는 기존 경고 1건만
+- server 모드(5174 → 8000) `e-u-1-judgment-a3` 결과 화면: 배지 `권장 순서와 가까움`, `첫 항목 순위 1번째`, `순서 차이 합 0`, `상위 3개 일치 3/3`, 요약 "권장 순서와 가깝게 배열했습니다. 네 기준 모두 충족했습니다.", 화면에 `undefined` 없음
+  (서버 응답 `scoringMetrics` = firstPickRank 1 · orderDistance 0 · top3Overlap 3 · passed true 와 일치)
+- mock: 페이지에서 `judgmentMetrics` 를 불러 반환값이 `{durationMs, scoringMetrics:{…}}` 모양인지 확인
+
+**대기방 문구 (`data/courses.ts`)**
+- 정렬 단계 `align` summary → "방향키로 위치(X·Y)를, Q/E 로 회전(θ)을 맞춰 두 마크를 겹칩니다. 모형 컨트롤러를 쓰면 위치는 가운데 고정, 비틀어서 회전합니다."
+- prerequisites 를 BACK 현재 값(`web/backend/app/course_data.py`·`course_judgment.py`)과 같게: 정렬 `['photo-basics']` → `['equipment-basics']`, 판단 `[]` → `['photo-basics']`
+- ⚠️ HEADER 확인: 지시는 "BACK 과 같은 문장" 인데 확인 시점의 BACK 소스는 문장이 아니라 **과정 id** 이고 새 문구도 아직 없었다(수정 파일은 `README.md` 뿐). 그래서 id 를 BACK 에 맞추기만 했다. BACK 이 문장으로 바꾸면 그 문장을 받아 다시 맞춘다
+- 참고: server 모드 대기방(C-07)은 **서버 과정 데이터**를 그리므로 이 파일 변경은 mock 모드에만 보인다. C-07 새 문구는 BACK 재적재에 달려 있다
+
+**prerequisites 문장 반영 (BACK 재적재 뒤)**: BACK 서버 값이 문장으로 바뀌어 정렬 과정을 `['장비 기초 과정의 정렬 개념']` 으로 맞췄다(판단 과정 `['photo-basics']` 는 BACK 과 같음). 빌드 통과
+
+### 재촬영 (BACK 재적재 + LLM 키 재시작 뒤)
+
+- **C-07_대기방.png** 다시 찍음 — 정렬 단계 "방향키로 위치(X·Y)를, Q/E 로 회전(θ)을 맞춰 두 마크를 겹칩니다. 모형 컨트롤러를 쓰면 위치는 가운데 고정, 비틀어서 회전합니다.", 먼저 보면 좋은 과정 "· 장비 기초 과정의 정렬 개념" 확인
+- **C-17_결과_판단.png** 다시 찍음 (시드 `e-u-1-judgment-a2`) — 직접 확인: 배지 `권장 순서와 가까움`, `첫 항목 순위 1번째`, `순서 차이 합 0`, `상위 3개 일치 3/3`, 요약 "권장 순서와 가깝게 배열했습니다. 네 기준 모두 충족했습니다.", 화면에 `undefined` 없음
+- **C-19 — 못 찍음 (결정 대기)**
+  - BACK 재적재로 실패 기록 `e-u-1-judgment-a3` 가 지워졌고, 서버가 LLM 키로 재시작돼(`llmConfigured: true`) 새 시도로는 503 이 나지 않는다
+  - `제출/캡처/C-19_결과_피드백실패.png` 는 **M4 수정 전** 파일이라 `undefined/3`·`권장 순서와 차이 있음` 이 보인다 → 그대로 쓰면 안 됨
+  - 사용자 선택("실제 AI 피드백으로 대체")에 따라 새 판단 시도 **`e-u-1-judgment-a3`** 를 만들고 `피드백 만들기` → **AI 피드백 성공**(`AI 생성` 배지, 1번째·0·3/3, undefined 없음)
+    - 참고용으로 `제출/캡처/C-19b_결과_AI피드백_참고.png` 로 저장 (C-19 번호는 비워 둠)
+  - 곧이어 HEADER 지시가 바뀜: **C-19 는 실패 화면 그대로**, BACK 에 "C-19 준비" → 키 없는 서버로 바뀐 뒤 새 시도 → 503 → 새로고침 → 촬영
+  - BACK 이 키 없이 재시작(`/api/health` `llmConfigured:false` 직접 확인) → **C-19 촬영 완료**
+    - 새 판단 시도 **`e-u-1-judgment-a4`** 제출 → `피드백 만들기` → 503 "AI 피드백을 만들 수 없습니다. 서버에 LLM API 키가 설정되어 있지 않습니다…" → 새로고침
+    - 직접 확인: `생성 실패` 배지, "피드백을 만들지 못했습니다", "제출한 답변과 연습 기록은 그대로 저장되어 있습니다…", `다시 시도` / 순서 지표 배지 `권장 순서와 가까움`, `1번째`·`0`·`3/3`, `undefined` 없음
+    - `제출/캡처/C-19_결과_피드백실패.png` 덮어씀(M4 전 파일 교체)
+
+**이번 재촬영으로 DB 에 생긴 기록**: `e-u-1-judgment-a3`(AI 피드백 성공, C-19b 참고 캡처), `e-u-1-judgment-a4`(피드백 실패, C-19). 둘 다 BACK 재적재 때 지워진다
+- 추가로 발견(고치지 않음): S-06 대기방(C-07)에도 `실습 서버 연결` 배지가 없다 — 로그인·정렬 실습과 같음
+
+## 2026-09-15 오전 — M1·M2 화면 ↔ API 연결 (HEADER 지시, 결정 17) · 캡처는 이어서
+
+09:48 시작 → 09:57 끝 (1시간 제한 안).
+
+**M1 진도 기록** — `PATCH /api/enrollments/{enrollment_id}/progress`, 본문 `{stepId, completed: true}`, 응답 `Enrollment`
+- 공용 도우미 `src/lib/progress.ts` `completeSteps(course, enrollmentId, stepIds)`
+  - 과정 `course.steps` 에 있는 id 만 보낸다(없는 id 는 서버 422 이므로 미리 거른다)
+  - 서버가 같은 배정을 읽고 고쳐 쓰므로 한 번에 하나씩 차례로 보낸다
+  - 실패해도 실습 흐름을 막지 않는다(콘솔 경고만)
+  - status·completedAt 은 서버가 다시 계산한다. 실습 화면은 호출 뒤 결과 화면으로 넘어가고, 다른 화면은 들어올 때 서버에서 다시 읽는다
+- 어느 시점에 어느 단계를 완료로 보나
+  | 단계 id | 정렬(S-07) server | 정렬(S-07) mock | 판단(S-08) |
+  |---|---|---|---|
+  | concept·marks | `정렬 시작` 성공 직후 (대기방 안내를 읽고 시작) | 제출 때 한꺼번에 | 제출 성공 직후 한꺼번에 |
+  | align | `정렬 확정` 성공 직후 | 〃 | 〃 |
+  | submit | 제출 성공 직후 | 〃 | 〃 |
+  | feedback | 결과 화면(S-09)에서 피드백이 보일 때 (M2 와 같은 시점) | 〃 | 〃 |
+  - mock 정렬은 원래 제출 때 기록이 처음 만들어지므로(시작 때는 배정 id 가 없음) 제출 때 4단계를 한 번에 남긴다
+- 고친 곳: `AlignmentExercise.tsx` 진도 호출 몇 줄 + 배정 id ref (센서·실습 성공 부분은 건드리지 않음), `JudgmentExercise.tsx` 한 줄
+
+**M2 피드백 열람** — `POST /api/attempts/{attempt_id}/feedback/viewed`, 본문 없음, 응답 `{attemptId, feedbackViewedAt}` (YAML `FeedbackViewedResponse`)
+- `contract.ts`·`server.ts`·`mock.ts`·`api/index.ts` 에 `markFeedbackViewed` 추가, `types` 에 `FeedbackViewedResponse` 추가
+- `Result.tsx`: 피드백이 있고 · 아직 `feedbackViewedAt` 이 비어 있고 · **보는 사람이 그 기록의 학습자 본인일 때** 한 번 호출
+  - 매니저가 S-12 → S-09 로 열어 본 것은 학습자의 열람으로 기록하지 않는다
+  - 이미 열람한 기록은 다시 부르지 않는다(첫 열람 시각 유지)
+  - 응답으로 시도를 덮어쓰거나 다시 불러오지 않는다. 결과 화면은 열람 시각을 표시하지 않아 반영할 곳이 없다
+- mock 은 저장된(localStorage) 기록만 시각을 남기고, 시드 기록은 시각만 돌려준다
+
+**확인 (브라우저, server 모드 5174 → 실제 8000 호출)**
+- 판단 실습 제출: `POST /api/attempts` 201 → `POST .../e-u-1-judgment-a3/submission` 200 → `PATCH /api/enrollments/e-u-1-judgment/progress` 200 × 4. 응답 본문이 `Enrollment` 모양(`id·userId·courseId·status·stepsCompleted·completedAt`)
+- 정렬 실습(키보드): `정렬 시작` → PATCH `e-u-1-stage` 200 × 2 → `정렬 확정` → `POST .../e-u-1-stage-a4/phase` 200 → PATCH 200 → 제출 → `POST .../submission` 200 → PATCH 200
+- 저장 확인: `completeSteps(..., ['feedback'])` 를 페이지에서 불러 `GET /api/enrollments?userId=u-1` → `e-u-1-judgment` 이 `stepsCompleted` 5개, `status: completed`, `completedAt` 채워짐 (서버 재계산 확인)
+- M2: 페이지에서 `markFeedbackViewed('e-u-1-judgment-a3')` → 응답 `{"attemptId":"e-u-1-judgment-a3","feedbackViewedAt":"2026-09-15T09:53:11+09:00"}` (두 키뿐, YAML 과 같음) → `GET /api/attempts/e-u-1-judgment-a3` 의 `feedbackViewedAt` 같은 값
+- M2 화면 자동 호출: **server 에서는 재현할 기록이 없었다** — LLM 미연결(`/api/health` `llmConfigured:false`)이라 새 시도의 `피드백 만들기` 가 503, 시드 기록은 전부 이미 열람됨. 그래서 mock 모드(5173)에서 판단 실습 제출 → 결과 화면 도착 즉시 새 기록 `feedbackViewedAt` 채워짐·`feedback` 단계 기록·배정 `completed` 확인. 확인 뒤 mock 저장 기록은 지웠다
+- 타입 검사·빌드 통과, 린트는 기존 경고 1건(`demo.tsx` only-export-components)만
+
+**server DB 에 남긴 테스트 기록 (재적재로 지워짐)**: `e-u-1-judgment-a3`(제출·피드백 503·열람 시각), `e-u-1-stage-a4`(제출), `e-u-1-judgment` 배정 `completed`
+
+참고(고치지 않음): mock `updateProgress` 는 `completedAt` 을 채우지 않는다(server 는 채움). 화면에서 `completedAt` 을 쓰는 곳이 없어 그대로 둠
+
+### UI 흐름도 캡처 (BACK 재적재 뒤, 10:05~10:40)
+
+**찍는 방법**: server 모드 5174 를 별도 헤드리스 크롬(Chrome 152, 새 프로필)으로 열고 DevTools 프로토콜 스크립트로 조작·저장.
+너비 1440px, 주소창·개발 도구 없음, 화면이 긴 곳은 창 높이를 페이지 높이로 늘려 한 장에 담았다(그래프가 다 그려질 때까지 기다린 뒤 저장).
+키 입력은 실제 키 이벤트(`event.code`)로 넣었다. 로그인 1/1(김진수), 매니저 화면만 2/2(최태원).
+스크립트는 세션 임시 폴더에만 두었다(저장소에 넣지 않음).
+
+**찍은 것 — `제출/캡처/` 24개 파일 (C-24 제외 전부)**
+| 번호 | 파일 | 확인한 상태 |
+|---|---|---|
+| C-01 | C-01_로그인.png | 빈 입력 |
+| C-02 | C-02_로그인_오류.png | 1 / 틀린 비밀번호 → "아이디 또는 비밀번호가 맞지 않습니다." |
+| C-03 | C-03_실습목록.png | 김진수 로그인 직후, 해야 할 실습 2 · 완료 1 |
+| C-04 | C-04_현재상황.png | 지표 4개 + 그래프 4개 모두 그려짐 |
+| C-05 | C-05_과정카탈로그.png | `실습 가능`·`미리보기`·`준비 중` 3종 |
+| C-06 | C-06_실습기록.png | 시도 5건 |
+| C-07 | C-07_대기방.png | 정렬 과정, 단계·합격 기준·확인 기준 4개·준비물까지 |
+| C-08 | C-08_정렬실습_조작중.png | 3D 장비 뷰 + 현미경 뷰 + 남은 오차(+30.5 / −35.0 / +6.5°), 계산 위치 `실습 서버` |
+| C-09 | C-09_정렬확정_기준안.png | ±0.5px·−0.1° 에서 확정 → `결과 — 웨이퍼에 남은 패턴` + `패턴이 기준 안` |
+| C-10 | C-10_정렬확정_어긋남.png | +38.0px·+5.4° 에서 확정 → `패턴이 어긋남` |
+| C-11 | C-11_제출폼.png | 조정 순서 선택 + 이유 입력 |
+| C-12 | C-12_모형컨트롤러_연결안됨.png | 입력 출처 `모형 컨트롤러` → "연결되지 않았습니다…" + `모형 컨트롤러 연결`·`키보드로 진행` (이 크롬은 Web Serial 지원이라 '미지원' 이 아니라 '미연결' 문구) |
+| C-13 | C-13_키보드기울기_회전잠김.png | W 로 앞뒤 −8.4° → `기울어짐` + "먼저 수평을 맞추세요…" + `수평으로 되돌리기` |
+| C-14 | C-14_판단실습_상황.png | 상황·관측값 5개·확인 항목 5개 |
+| C-15 | C-15_판단실습_순서이유.png | 위/아래로 순서 바꾼 뒤 + 이유 입력 |
+| C-16 | C-16_결과_정렬.png | 시드 `e-u-1-stage-a3`(키보드): 정렬 결과 + 보정 궤적 |
+| C-17 | C-17_결과_판단.png | 시드 `e-u-1-judgment-a2`: 순서 비교표 + 근거 (⚠️ 아래 1번) |
+| C-18 | C-18_결과_기준별확인.png | `e-u-1-stage-a3` 기준별 확인 결과 카드 + `규칙 기반 임시 채점 · AI 미연결` |
+| C-19 | C-19_결과_피드백실패.png | **맨 마지막에** 새 판단 시도 제출 → `피드백 만들기` → 503 → 새로고침 → `생성 실패` + 답변 보존 안내 + `다시 시도` |
+| C-20 | C-20_교육현황.png | 최태원 로그인 직후 |
+| C-21 | C-21_학습자목록.png | 학습자 8명 |
+| C-22 | C-22_학습자별성취도.png | 김진수, 제출 기록(과정 열)까지 |
+| C-23 | C-23_정렬유지_진행.png / C-23_실습성공.png | 키보드 모드, `4.4 / 5초` 진행 막대 1장 + `실습 성공`·`정렬 유지 완료` 1장 |
+
+**못 찍은 것**
+- C-24(실물 센서 연결) — 보드 없음(`/dev/cu.*` 에 USB 시리얼 없음). 생략
+
+**캡처하면서 server DB 에 생긴 기록 (그대로 둠)**
+- `e-u-1-judgment-a3` — **C-19 기록.** 판단 제출, `feedbackStatus: failed`, status `feedback_failed`
+- `e-u-1-stage-a4` — C-08~C-13·C-23 을 찍은 정렬 시도. 확정만 하고 제출 안 함(status `aligned`)
+- 진도: M1 연결로 `e-u-1-stage`·`e-u-1-judgment` 에 단계 기록이 다시 쌓였다(시드와 같은 4단계라 값은 그대로)
+- ⚠️ C-01~C-07·C-16~C-18·C-20~C-22 는 이 기록들이 생기기 **전에** 찍었다. 지금 다시 찍으면 기록 수가 달라진다
+
+### 화면설계.md 설명과 실제 화면이 다른 곳 (코드는 고치지 않음)
+
+1. ⚠️ **S-09 판단 결과 지표가 API 와 불일치 — 감점 항목 "UI 데이터와 API 불일치" 에 해당** (C-17·C-19 에 보임)
+   - API·YAML: `summary.scoringMetrics.{firstPickRank, orderDistance, top3Overlap, passed}` (한 단계 안에 들어 있음)
+   - 화면(`types` `JudgmentSummary`, `Result.tsx` 597·635~637줄): `summary.firstPickRank` 처럼 바로 읽음 → server 모드에서 전부 undefined
+   - 결과: `첫 항목 순위 _번째`(숫자 없음), `순서 차이 합`(빈칸), `상위 3개 일치 undefined/3`, 다섯 줄 모두 `같음` 인데 배지 `권장 순서와 차이 있음`, 요약 문장 "권장 순서와 차이가 있습니다"
+   - mock 은 평평한 모양이라 정상 → mock 과 server 모양이 다르다
+   - 고치려면 FRONT 쪽 몇 줄(`server.ts` 에서 `scoringMetrics` 를 펴 주거나 타입을 YAML 에 맞춤) — **HEADER 결정 필요**. 고치면 C-17·C-19 다시 찍어야 함
+2. S-01 로그인(C-01·C-02)에는 `실습 서버 연결` 배지가 없다 — 배지는 서버 데이터를 불러오는 화면(`LoadState`)에만 뜬다
+3. S-07 정렬 실습(C-08~C-13·C-23)에도 `실습 서버 연결` 배지가 없다 — 대신 `키보드 조작` 배지와 "계산 위치: 실습 서버" 가 보인다
+4. S-09 피드백 실패: 화면설계는 "실패 시 사유 + 답변 보존 안내 + 다시 시도". 실제로는 `피드백 만들기` 를 누른 **직후**에는 빈 상태 카드 아래 빨간 사유 문장만 나오고, **새로고침해야** `생성 실패` 카드(보존 안내 + `다시 시도`)가 나온다. C-19 는 새로고침 뒤 모습
+5. S-05 실습 기록·S-12 제출 기록: 시드 기록마다 `예시 데이터` 배지가 붙는다(화면설계에 없음). S-05 표의 "통과 여부" 는 `88% · 충족` 같은 달성도로 나온다
+6. S-06 대기방: "먼저 보면 좋은 과정" 이 과정 이름이 아니라 id `equipment-basics` 로 나온다
+7. S-06 대기방 단계 "정렬 실습" 설명이 "컨트롤러로 위치(X·Y)를, 화면 조작으로 회전(θ)" — 결정 15·16(센서 모드는 X/Y 고정·비틀어 회전, 키보드는 방향키·Q/E)과 다르다(과정 데이터 문구)
+8. S-10 교육 현황: 화면설계의 "기준별 평균 달성도" 카드가 없다. 실제는 지표 4개 · 학습자별 진도 · 주차별 실습 활동 · 검토 필요 · 학습자 기록 표
+9. S-11 학습자 목록: 표 열이 이름·소속·단계·시도·최근 제출·상태. 화면설계의 "최근 결과"·"확인 필요" 열은 없다
+10. S-07a: 모형 컨트롤러를 고르면 X/Y 오차가 회색 `고정` 으로 바뀌고 `정렬 시작` 이 잠긴다("연결하거나 키보드로 바꾸면 시작할 수 있습니다") — 화면설계에는 연결 전 시작 버튼 상태 설명이 없다
+11. C-23 은 화면설계 예시 `3.8 / 5초` 대신 `4.4 / 5초` 에서 찍었다(같은 상태, 시각만 다름)
+
 ## 2026-09-14 밤 — 센서 모드 흐름 다시 잡기: 비튼 만큼 회전 · 정렬 5초 유지 → 실습 성공 · X/Y '고정' 표시
 
 사용자 실물 확인 후 지적 3건.

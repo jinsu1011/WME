@@ -16,6 +16,13 @@ export const LEVEL_TOLERANCE_DEG = 4.0
 export const LEVEL_EXIT_MARGIN_DEG = 1.0
 
 /**
+ * 센서 모드 회전 허용 오차(도). 키보드 모드는 과정 설정(±1.0°)을 그대로 쓴다.
+ * 2026-09-15 실물 모형 확인: 비틀기는 손떨림·드리프트로 ±1° 유지가 어려워 ±3° 로 넓혔다(사용자 결정).
+ * 서버 web/backend/app/config.py 의 SENSOR_ROTATION_TOLERANCE_DEG 와 같은 값이어야 한다.
+ */
+export const SENSOR_ROTATION_TOLERANCE_DEG = 3.0
+
+/**
  * 실습 성공으로 인정하는 유지 시간(ms).
  * 정렬을 시작한 뒤 **수평 + 정렬 허용 오차 안** 상태를 이 시간 동안 끊김 없이 유지하면 성공을 띄운다.
  * 화면 표시일 뿐 저장값·채점과는 별개다(채점은 정렬 확정 순간의 값으로 한다).

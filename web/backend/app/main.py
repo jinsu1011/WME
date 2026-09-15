@@ -14,7 +14,8 @@ from pydantic import BaseModel, Field
 
 from . import repo
 from . import analyzers
-from .config import (COURSE_VERSION, MODEL_VERSION, SETTINGS_VERSION, llm_configured)
+from .config import (COURSE_VERSION, MODEL_VERSION, SETTINGS_VERSION,
+                     SENSOR_ROTATION_TOLERANCE_DEG, llm_configured)
 from .db import connect, init_db
 from .llm.service import FeedbackError, generate
 from .repo import score_attempt
@@ -215,6 +216,8 @@ def _finalize(conn, attempt_id: str) -> None:
                        (row["enrollment_id"],)).fetchone()
     course = repo.get_course(conn, enr["course_id"])
     tol = (course or {}).get("content", {}).get("tolerance")
+    if row["input_device"] == "model_controller":
+        tol = {**(tol or {}), "rotation_deg": SENSOR_ROTATION_TOLERANCE_DEG}
 
     analyzer = analyzers.get((course or {}).get("exerciseType"))
     result = analyzer.analyze([(r["t_ms"], r["wafer_x"], r["wafer_y"], r["wafer_theta"])
@@ -434,6 +437,8 @@ async def ws_attempt(ws: WebSocket, attempt_id: str) -> None:
         tol = json.loads(course_row["content_json"])["tolerance"] if course_row else {}
         pos_tol = tol.get("position_px", 4.0)
         rot_tol = tol.get("rotation_deg", 1.0)
+        if row["input_device"] == "model_controller":
+            rot_tol = SENSOR_ROTATION_TOLERANCE_DEG
 
         await ws.send_json({"type": "ready", "attemptId": attempt_id,
                             "source": row["source"], "inputDevice": row["input_device"],

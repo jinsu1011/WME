@@ -110,7 +110,7 @@
     <div class="card"><span class="num">03</span> <b style="font-size:30px">기능 요구사항</b><p>액터별 기능 20개와 화면 · API 연결</p></div>
     <div class="card"><span class="num">04</span> <b style="font-size:30px">UI 흐름도</b><p>화면 13개 전체 흐름 · 화면별 구성 요소와 호출 API · 예외 흐름</p></div>
     <div class="card"><span class="num">05</span> <b style="font-size:30px">데이터 모델 설계</b><p>ERD(19테이블 · 4그룹) · 화면 ↔ API ↔ DB 대조</p></div>
-    <div class="card"><span class="num">06</span> <b style="font-size:30px">API 명세 정의</b><p>OpenAPI 3.0.3 · REST 16개(로그인 [설계] 포함) + WebSocket 1개 · 요청 · 응답 · 예외</p></div>
+    <div class="card"><span class="num">06</span> <b style="font-size:30px">API 명세 정의</b><p>OpenAPI 3.0.3 · REST 16개 + WebSocket 1개 · 요청 · 응답 · 예외</p></div>
     <div class="card"><span class="num">07</span> <b style="font-size:30px">고려사항</b><p>설계상 고민 · 다음 단계</p></div>
     <div class="card" style="background:var(--blue-soft)"><span class="num">부록</span> <b style="font-size:30px">발표 자료</b><p>5분 발표용 요약 (본문과 같은 내용)</p></div>
   </div>
@@ -145,11 +145,11 @@
   <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-top:52px;gap:24px">
     <div class="card"><p style="margin:0">신입사원 1명 교육·훈련 기간</p><div class="big" style="margin-top:14px">18.3<small>개월</small></div><p>대졸 신입 평균. 대기업은 23.1개월</p></div>
     <div class="card"><p style="margin:0">신입사원 1명 교육·훈련 비용</p><div class="big" style="margin-top:14px">5,960<small>만 원</small></div><p>임금 등 간접비 포함 1인당 총비용</p></div>
-    <div class="card"><p style="margin:0">첨단 공정 웨이퍼 1장 가격</p><div class="big" style="margin-top:14px">약 2<small>만 달러</small></div><p>300mm · 3nm 로직 공정 추정치</p></div>
+    <div class="card"><p style="margin:0">첨단 공정 웨이퍼 1장 가격</p><div class="big" style="margin-top:14px">약 2<small>만 달러</small></div><p>300mm · 3nm 공정 추정치</p></div>
     <div class="card"><p style="margin:0">반도체 공장 30분 정전 피해</p><div class="big" style="margin-top:14px">약 500<small>억 원</small></div><p>2018년 평택 사례</p></div>
   </div>
   <div class="card" style="margin-top:34px;background:#fff;border:2px solid var(--line)">
-    <p style="margin:0;font-size:26px;line-height:1.7"><b>기획 의도</b>  반도체 회사에 입사한 신입은 공정 이론은 공부했지만 장비 조작과 웨이퍼 취급 경험은 없습니다.
+    <p style="margin:0;font-size:26px;line-height:1.7"><b>기획 의도</b> — 반도체 회사에 입사한 신입은 공정 이론은 공부했지만 장비 조작과 웨이퍼 취급 경험은 없습니다.
     실장비는 비싸고 멈출 수 없어 "틀려 보면서" 배우기 어렵습니다. 그래서 <b>투입 전에 원리와 판단 순서를 반복해서 연습하고, 그 과정을 기록으로 남기는 시스템</b>을 기획했습니다.</p>
   </div>
   <div class="foot"><span class="src">출처: 한국경영자총협회 「2013 신입사원 교육·훈련 및 수습사원 인력관리 현황조사」(355개사), 매일노동뉴스 2013.11.22 · Silicon Analysts, Wafer Pricing by Process Node(2026.08 추정치) · 서울경제 2026.05.13 「하루만 멈춰도 웨이퍼 2.2만장 버려야」</span><span class="pn"></span></div>
@@ -174,7 +174,7 @@
 
 <section class="slide pad">
   <p class="eyebrow">01 서비스 개요 · 핵심 가치와 주요 기능</p>
-  <h2 class="h2">핵심 가치별로 해결하는 문제와 주요 기능</h2>
+  <h2 class="h2">네 가지 가치가 두 문제를 각각 해결합니다</h2>
   <table class="t" style="margin-top:46px;font-size:25px">
     <tr><th style="width:300px">핵심 가치</th><th style="width:220px">해결하는 문제</th><th>주요 기능</th></tr>
     <tr><td>반복 가능한 실습</td><td><span class="tag">문제 1</span></td><td>정렬 실습(3D 장비 뷰) · 판단 실습 · 재실습(이전 기록 보존)</td></tr>
@@ -192,7 +192,7 @@
 
 <section class="slide pad">
   <p class="eyebrow">01 서비스 개요 · 범위</p>
-  <h2 class="h2">교육 운영에 필요한 기능만 범위에 넣었습니다</h2>
+  <h2 class="h2">3일 안에 설계를 끝낼 수 있는 범위로 한정했습니다</h2>
   <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:50px;gap:40px">
     <div class="card" style="background:var(--blue-soft)"><h4 style="color:var(--blue)">포함</h4>
       <ul style="margin-top:18px;padding-left:28px;font-size:25px;line-height:2.1;color:var(--body)">
@@ -221,15 +221,15 @@
     <tr><th style="width:250px">액터</th><th style="width:150px">구분</th><th style="width:380px">주요 역할 / 행동</th><th>상세 설명</th></tr>
     <tr><td>신입사원<br><code>learner</code></td><td>사용자</td><td>로그인 · 실습 목록 확인 · 실습 수행 · 결과·피드백 확인 · 재실습</td><td>배정된 과정을 대기방에서 확인하고 연습을 시작합니다. 정렬 실습은 키보드(기본) 또는 교육용 모형 컨트롤러로 조작하고 조정 순서와 이유를 제출합니다. 판단 실습은 확인 순서와 이유를 제출합니다. 재실습은 새 기록으로 쌓입니다.</td></tr>
     <tr><td>매니저<br><code>instructor</code></td><td>사용자</td><td>로그인 · 반 전체 현황 · 학습자 목록 · 학습자별 성취도·기록 확인</td><td>담당 인원의 진도 · 기준별 달성도 · 시도 추이를 보고, 개인의 실제 제출 기록(보정 경로 · 답변 · 피드백)까지 들어가 봅니다. 집계 숫자는 저장된 기록에서만 계산됩니다.</td></tr>
-    <tr><td>LLM 서비스</td><td>외부 시스템</td><td>학습 피드백 생성 · 루브릭 채점</td><td>서버가 분석 결과 · 보정 구간 · 답변 · 루브릭을 보내면 피드백을 돌려줍니다. 서버가 근거 구간 id와 점수 범위를 검증하고, 실패해도 답변과 규칙 점수는 남습니다.</td></tr>
-    <tr><td>교육용 모형 컨트롤러</td><td>외부 장치<br>(선택)</td><td>기울기 · 회전 입력</td><td>센서(MPU6050)를 붙인 웨이퍼 모형입니다. 브라우저가 USB로 직접 읽습니다(Web Serial). 실제 장비 조작기를 대신하는 교육용 컨트롤러이며, 없으면 키보드로 같은 실습이 됩니다.</td></tr>
+    <tr><td>LLM 서비스</td><td>외부 시스템</td><td>학습 피드백 생성 · 루브릭 채점</td><td>서버가 분석 결과 · 보정 구간 · 답변 · 루브릭을 보내면 피드백을 돌려줍니다. 서버가 근거 구간 id 와 점수 범위를 검증하고, 실패해도 답변과 규칙 점수는 남습니다.</td></tr>
+    <tr><td>교육용 모형 컨트롤러</td><td>외부 장치<br>(선택)</td><td>기울기 · 회전 입력</td><td>센서(MPU6050)를 붙인 웨이퍼 모형입니다. 브라우저가 USB 로 직접 읽습니다(Web Serial). 실제 장비 조작기를 대신하는 교육용 컨트롤러이며, 없으면 키보드로 같은 실습이 됩니다.</td></tr>
   </table>
   <div class="foot"><span>원본: 서비스개요.md 2 · 과정 작성·배정(교육 담당자 액터)은 다음 단계</span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad" style="padding-top:56px">
-  <p class="eyebrow">03 기능 요구사항 · 액터별 기능 20개</p>
-  <h2 class="h2" style="font-size:44px">기능마다 화면과 API를 연결했습니다</h2>
+  <p class="eyebrow">03 기능 요구사항</p>
+  <h2 class="h2" style="font-size:44px">액터별 기능 20개 — 모든 기능이 화면과 API 로 이어집니다</h2>
   <table class="t small" style="margin-top:22px">
     <tr><th style="width:110px">ID</th><th style="width:250px">기능</th><th>설명</th><th style="width:130px">화면</th><th style="width:560px">API</th></tr>
     <tr><td>FR-C01</td><td>로그인</td><td>아이디·비밀번호로 로그인, 역할별 첫 화면</td><td>S-01</td><td><span class="m post">POST</span> /api/auth/login <b>[설계]</b></td></tr>
@@ -253,12 +253,12 @@
     <tr><td>FR-M02</td><td>학습자 목록</td><td>소속·단계·시도 수·최근 제출·상태</td><td>S-11</td><td><span class="m get">GET</span> /api/instructor/overview</td></tr>
     <tr><td>FR-M03</td><td>학습자별 성취도</td><td>기준별 달성도·추이·제출 기록 → 결과</td><td>S-12</td><td><span class="m get">GET</span> users/{id} · attempts · enrollments · courses</td></tr>
   </table>
-  <div class="foot"><span>원본: 서비스개요.md 3 · 표 안의 경로는 /api를 일부 생략</span><span class="pn"></span></div>
+  <div class="foot"><span>원본: 서비스개요.md 3 · 표 안의 경로는 /api 를 일부 생략</span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 전체 흐름 · 화면 13개</p>
-  <h2 class="h2">신입사원과 매니저의 화면 흐름</h2>
+  <p class="eyebrow">04 UI 흐름도 · 전체 흐름</p>
+  <h2 class="h2">화면 13개 — 역할에 따라 두 갈래로 나뉩니다</h2>
   <div style="margin-top:60px">
     <p style="font-size:22px;font-weight:800;color:var(--blue)">신입사원</p>
     <div class="lane" style="margin-top:16px">
@@ -290,23 +290,23 @@
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 공통 · S-01 로그인</p>
-  <h2 class="h2">역할에 따라 첫 화면이 달라집니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 공통</p>
+  <h2 class="h2">S-01 로그인 — 역할에 맞는 첫 화면으로 들어갑니다</h2>
   <div class="ui" style="grid-template-columns:auto auto 1fr">
     <div><div class="shot" data-src="../자료/캡처/C-01_로그인.png" data-crop="470 70 970 820" data-h="740"><i data-b="553 290 887 510">1</i><i data-b="545 568 895 748">2</i></div><p class="cap">C-01 빈 입력</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-02_로그인_오류.png" data-crop="470 48 970 798" data-h="740"><i data-b="553 436 887 472">3</i></div><p class="cap">C-02 아이디·비밀번호 불일치</p></div>
     <ul class="notes">
-      <li><span class="n">1</span><div><b>아이디 · 비밀번호 입력, 로그인</b>: 역할(<code>role</code>)에 따라 첫 화면이 갈립니다<span class="api">POST /api/auth/login [설계] → LoginResponse.user</span><span class="go">→ 신입사원 S-02 / 매니저 S-10</span></div></li>
-      <li><span class="n">2</span><div><b>시연용 계정</b>: 시연 앱은 데모 계정(신입 1/1, 매니저 2/2)으로 역할만 전환하며, 인증 구현이 아님을 화면에 고지합니다<span class="api">GET /api/users/{user_id}</span></div></li>
-      <li><span class="n">3</span><div><b>예외</b>: 불일치 시 "아이디 또는 비밀번호가 맞지 않습니다."<span class="api">401 Unauthorized [설계]</span></div></li>
+      <li><span class="n">1</span><div><b>아이디 · 비밀번호 입력, 로그인</b> — 역할(<code>role</code>)에 따라 첫 화면이 갈립니다<span class="api">POST /api/auth/login [설계] → LoginResponse.user</span><span class="go">→ 신입사원 S-02 / 매니저 S-10</span></div></li>
+      <li><span class="n">2</span><div><b>시연용 계정</b> — 시연 앱은 데모 계정(신입 1/1, 매니저 2/2)으로 역할만 전환하며, 인증 구현이 아님을 화면에 고지합니다<span class="api">GET /api/users/{user_id}</span></div></li>
+      <li><span class="n">3</span><div><b>예외</b> — 불일치 시 "아이디 또는 비밀번호가 맞지 않습니다."<span class="api">401 Unauthorized [설계]</span></div></li>
     </ul>
   </div>
   <div class="foot"><span class="legend"><span class="r">■ 빨간 번호 = 화면 구성 요소</span><span class="b">■ 파랑 = 호출 API</span><span class="g">■ 초록 = 화면 이동</span></span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · S-02 실습 목록 · S-03 현재 상황</p>
-  <h2 class="h2">해야 할 실습과 진행 변화를 보여줍니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원</p>
+  <h2 class="h2">S-02 실습 목록 · S-03 현재 상황 — 해야 할 일과 변화를 한눈에</h2>
   <div class="ui" style="grid-template-columns:auto 1fr;gap:34px">
     <div><div class="shot" data-src="../자료/캡처/C-03_실습목록.png" data-crop="320 90 1330 835" data-w="740"><i data-b="340 198 1316 248">1</i><i data-b="340 310 1316 454">2</i><i data-b="1175 331 1295 371">3</i><i data-b="340 680 1316 822">4</i></div><p class="cap">C-03 실습 목록 (신입사원 로그인 직후)</p></div>
     <div>
@@ -315,7 +315,7 @@
   </div>
   <ul class="notes" style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:0 40px">
     <li><span class="n">1</span><div><b>요약</b> 해야 할 실습 · 누적 연습 · 최근 정확도<span class="api">GET /api/courses · /api/enrollments?userId · /api/attempts?userId</span></div></li>
-    <li><span class="n">5</span><div><b>지표</b> 누적 연습 · 시간 · 진도 · 최근 정확도, 집계는 화면이 원본 기록에서 계산</div></li>
+    <li><span class="n">5</span><div><b>지표</b> 누적 연습 · 시간 · 진도 · 최근 정확도 — 집계는 화면이 원본 기록에서 계산</div></li>
     <li><span class="n">2</span><div><b>해야 할 실습</b> 과정명 · 진도(단계 완료 비율) · <b>3</b> 이어서 연습하기<span class="go">→ S-06 대기방</span></div></li>
     <li><span class="n">6</span><div><b>기준별 달성도 · 7 시도별 추이</b><span class="api">GET /api/attempts?userId · /api/courses/{course_id}</span></div></li>
   </ul>
@@ -323,8 +323,8 @@
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · S-04 과정 카탈로그 · S-05 실습 기록</p>
-  <h2 class="h2">과정 상태와 실습 이력을 구분해 보여줍니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원</p>
+  <h2 class="h2">S-04 과정 카탈로그 · S-05 실습 기록 — 상태와 이력을 구분해 보여줍니다</h2>
   <div class="ui" style="grid-template-columns:auto 1fr;gap:40px">
     <div><div class="shot" data-src="../자료/캡처/C-05_과정카탈로그.png" data-crop="320 190 1330 790" data-w="820"><i data-b="742 218 802 244">1</i><i data-b="1228 218 1298 244">2</i><i data-b="736 616 802 645">3</i><i data-b="1214 331 1297 363">4</i></div><p class="cap">C-05 과정 카탈로그</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-06_실습기록.png" data-crop="320 90 1330 500" data-w="820"><i data-b="710 230 886 264">5</i><i data-b="960 234 1024 260">6</i><i data-b="1108 230 1212 264">7</i></div><p class="cap">C-06 실습 기록</p>
@@ -340,48 +340,48 @@
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · S-06 대기방</p>
-  <h2 class="h2">시작 전에 진행 단계와 확인 기준을 보여줍니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원</p>
+  <h2 class="h2">S-06 대기방 — 시작 전에 무엇을 어떤 기준으로 하는지 압니다</h2>
   <div class="ui" style="grid-template-columns:auto 1fr;gap:50px">
     <div class="shot" data-src="../자료/캡처/C-07_대기방.png" data-crop="320 90 1330 1000" data-h="770"><i data-b="340 198 916 364">1</i><i data-b="340 570 916 948">2</i><i data-b="953 276 1297 324">3</i><i data-b="932 360 1316 618">4</i><i data-b="932 880 1316 976">5</i></div>
     <ul class="notes">
-      <li><span class="n">1</span><div><b>어떤 연습인가요 · 왜 여기서 연습하나요</b>: 목표와 포지셔닝("실장비 실습을 대체하지 않습니다")<span class="api">GET /api/courses/{course_id} → description · objectives</span></div></li>
-      <li><span class="n">2</span><div><b>이렇게 진행합니다</b>: 과정 단계 5개, 완료한 단계는 체크 표시<span class="api">Course.steps[] · Enrollment.stepsCompleted</span></div></li>
-      <li><span class="n">3</span><div><b>다시 연습 시작</b>: 시도를 만들고 실습 화면으로 갑니다. 실습 불가 과정은 버튼 대신 "준비 중입니다"(서버 409)<span class="api">POST /api/attempts</span><span class="go">→ S-07 정렬 / S-08 판단</span></div></li>
-      <li><span class="n">4</span><div><b>내 기록</b>: 단계 · 연습 횟수 · 최근 정확도<span class="api">GET /api/enrollments?userId · /api/attempts?userId</span></div></li>
-      <li><span class="n">5</span><div><b>먼저 보면 좋은 과정 · 준비물 · 합격 기준(±4px · ±1°)</b>: 허용 오차는 교육 과정 설정값이며 실제 장비 정밀도가 아닙니다<span class="api">Course.prerequisites · alignment.materials · tolerancePx/Deg</span></div></li>
+      <li><span class="n">1</span><div><b>어떤 연습인가요 · 왜 여기서 연습하나요</b> — 목표와 포지셔닝("실장비 실습을 대체하지 않습니다")<span class="api">GET /api/courses/{course_id} → description · objectives</span></div></li>
+      <li><span class="n">2</span><div><b>이렇게 진행합니다</b> — 과정 단계 5개, 완료한 단계는 체크 표시<span class="api">Course.steps[] · Enrollment.stepsCompleted</span></div></li>
+      <li><span class="n">3</span><div><b>다시 연습 시작</b> — 시도를 만들고 실습 화면으로 갑니다. 실습 불가 과정은 버튼 대신 "준비 중입니다"(서버 409)<span class="api">POST /api/attempts</span><span class="go">→ S-07 정렬 / S-08 판단</span></div></li>
+      <li><span class="n">4</span><div><b>내 기록</b> — 단계 · 연습 횟수 · 최근 정확도<span class="api">GET /api/enrollments?userId · /api/attempts?userId</span></div></li>
+      <li><span class="n">5</span><div><b>먼저 보면 좋은 과정 · 준비물 · 합격 기준(±4px · ±1°)</b> — 허용 오차는 교육 과정 설정값이며 실제 장비 정밀도가 아닙니다<span class="api">Course.prerequisites · alignment.materials · tolerancePx/Deg</span></div></li>
     </ul>
   </div>
   <div class="foot"><span class="legend"><span class="r">■ 구성 요소</span><span class="b">■ API</span><span class="g">■ 이동</span></span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 핵심 기능 · S-07 정렬 실습</p>
-  <h2 class="h2">3D 장비 뷰에서 두 마크를 허용 오차 안으로 맞춥니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 핵심 기능</p>
+  <h2 class="h2">S-07 정렬 실습 — 3D 장비 뷰에서 두 마크를 허용 오차 안으로 겹칩니다</h2>
   <div class="ui" style="grid-template-columns:auto 1fr;gap:46px">
     <div class="shot" data-src="../자료/캡처/C-08_정렬실습_조작중.png" data-crop="320 90 1330 1100" data-h="770"><i data-b="362 277 888 697">1</i><i data-b="1011 285 1227 506">2</i><i data-b="946 674 1296 750">3</i><i data-b="362 744 888 836">4</i><i data-b="946 1033 1296 1079">5</i><i data-b="1228 150 1318 174">6</i></div>
     <ul class="notes">
-      <li><span class="n">1</span><div><b>장비 뷰(3D)</b>: 스테이지 · 웨이퍼 · 마스크 판. 방향키 X/Y · Q/E 회전 · Shift 미세조정 · W/A/S/D 기울기(기울면 회전 잠김)</div></li>
-      <li><span class="n">2</span><div><b>현미경 뷰</b>: 고정 마스크 마크 + 움직이는 웨이퍼 마크 + 허용 범위</div></li>
-      <li><span class="n">3</span><div><b>남은 오차</b> X · Y(px) · 회전(°), 기준 안/밖, <b>판정은 서버</b>가 합니다<span class="api">WS /ws/attempts/{id}: sample(초당 약 25회) → state{dx, dy, dtheta, withinTolerance}</span></div></li>
-      <li><span class="n">4</span><div><b>정렬 유지</b>: 수평 + 허용 오차 안을 5초 유지하면 <b>실습 성공</b>(화면 표시, 채점과 별개)</div></li>
-      <li><span class="n">5</span><div><b>정렬 확정</b>: 서버가 저장된 측정으로 경로를 분석해 보정 구간을 만듭니다<span class="api">POST /api/attempts/{id}/phase {phase: confirmed} · PATCH …/progress</span><span class="go">→ 노광 · 현상 연출 → 제출 폼</span></div></li>
-      <li><span class="n">6</span><div><b>입력 출처 배지</b>: 키보드 조작 / 모형 컨트롤러 (<code>inputDevice</code> 로 저장)</div></li>
+      <li><span class="n">1</span><div><b>장비 뷰(3D)</b> — 스테이지 · 웨이퍼 · 마스크 판. 방향키 X/Y · Q/E 회전 · Shift 미세조정 · W/A/S/D 기울기(기울면 회전 잠김)</div></li>
+      <li><span class="n">2</span><div><b>현미경 뷰</b> — 고정 마스크 마크 + 움직이는 웨이퍼 마크 + 허용 범위</div></li>
+      <li><span class="n">3</span><div><b>남은 오차</b> X · Y(px) · 회전(°), 기준 안/밖 — <b>판정은 서버</b>가 합니다<span class="api">WS /ws/attempts/{id}: sample(초당 약 25회) → state{dx, dy, dtheta, withinTolerance}</span></div></li>
+      <li><span class="n">4</span><div><b>정렬 유지</b> — 수평 + 허용 오차 안을 5초 유지하면 <b>실습 성공</b>(화면 표시, 채점과 별개)</div></li>
+      <li><span class="n">5</span><div><b>정렬 확정</b> — 서버가 저장된 측정으로 경로를 분석해 보정 구간을 만듭니다<span class="api">POST /api/attempts/{id}/phase {phase: confirmed} · PATCH …/progress</span><span class="go">→ 노광 · 현상 연출 → 제출 폼</span></div></li>
+      <li><span class="n">6</span><div><b>입력 출처 배지</b> — 키보드 조작 / 모형 컨트롤러 (<code>inputDevice</code> 로 저장)</div></li>
     </ul>
   </div>
   <div class="foot"><span class="legend"><span class="r">■ 구성 요소</span><span class="b">■ API</span><span class="g">■ 이동</span></span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 핵심 기능 · 정렬 확정 → 노광 · 현상</p>
-  <h2 class="h2">남은 오차가 웨이퍼 패턴 결과로 나타납니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 핵심 기능</p>
+  <h2 class="h2">정렬 확정 → 노광 · 현상 — 오차가 그대로 웨이퍼 패턴에 남습니다</h2>
   <div class="ui" style="grid-template-columns:auto auto;gap:40px;justify-content:start">
     <div><div class="shot" data-src="../자료/캡처/C-09_정렬확정_기준안.png" data-crop="340 200 1320 830" data-w="820"><i data-b="361 743 887 815">1</i><i data-b="1011 290 1228 505">2</i><i data-b="945 696 1295 774">3</i></div><p class="cap">C-09 허용 범위 안에서 확정 → 패턴이 기준 안</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-10_정렬확정_어긋남.png" data-crop="340 200 1320 830" data-w="820"><i data-b="361 743 887 815">4</i><i data-b="945 674 1295 750">5</i></div><p class="cap">C-10 크게 어긋난 채 확정 → 패턴이 어긋남</p></div>
   </div>
   <ul class="notes" style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:0 40px">
     <li><span class="n">1</span><div><b>결과 — 웨이퍼에 남은 패턴</b> "패턴이 기준 안" · <b>2</b> 현미경 초록 · <b>3</b> 오차 기준 안<span class="api">POST /api/attempts/{id}/phase → Attempt.summary.converged (서버 계산)</span></div></li>
-    <li><span class="n">4</span><div><b>패턴이 어긋남</b> · <b>5</b> 오차 기준 밖: 실장비라면 손실이 되는 상황을 여기서 먼저 겪어 봅니다<span class="go">→ 조정 순서와 이유 제출</span></div></li>
+    <li><span class="n">4</span><div><b>패턴이 어긋남</b> · <b>5</b> 오차 기준 밖 — 실장비라면 손실이 되는 상황을 여기서 먼저 겪어 봅니다<span class="go">→ 조정 순서와 이유 제출</span></div></li>
   </ul>
   <div class="foot"><span class="legend"><span class="r">■ 구성 요소</span><span class="b">■ API</span><span class="g">■ 이동</span></span><span class="pn"></span></div>
 </section>
@@ -395,67 +395,67 @@
   </div>
   <ul class="notes" style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:0 40px">
     <li><span class="n">1</span><div><b>조정 순서 선택지</b> 4개 (<code>Course.orderOptions</code>) · <b>2</b> 이유 입력(1~2000자) · <b>3</b> 제출하고 결과 보기<span class="api">POST /api/attempts/{id}/submission {orderOptionId, reason} → 규칙 기반 채점</span><span class="go">→ S-09 연습 결과</span></div></li>
-    <li><span class="n">4</span><div><b>실습 성공 카드</b> 5.0 / 5초 · <b>5</b> 3D 링 초록 · <b>6</b> 오차 기준 안. 벗어나면 0초부터 다시 셉니다. 저장·채점과 별개인 화면 표시입니다</div></li>
+    <li><span class="n">4</span><div><b>실습 성공 카드</b> 5.0 / 5초 · <b>5</b> 3D 링 초록 · <b>6</b> 오차 기준 안 — 벗어나면 0초부터 다시 셉니다. 저장·채점과 별개인 화면 표시입니다</div></li>
   </ul>
   <div class="foot"><span class="legend"><span class="r">■ 구성 요소</span><span class="b">■ API</span><span class="g">■ 이동</span></span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · S-08 판단 실습</p>
-  <h2 class="h2">관측값을 읽고 확인 순서와 이유를 제출합니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원</p>
+  <h2 class="h2">S-08 판단 실습 — 조작 없이, 무엇부터 확인할지 정합니다</h2>
   <div class="ui" style="grid-template-columns:auto auto;gap:40px;justify-content:start">
     <div><div class="shot" data-src="../자료/캡처/C-14_판단실습_상황.png" data-crop="320 190 1330 930" data-w="820"><i data-b="340 198 852 320">1</i><i data-b="340 337 852 637">2</i><i data-b="890 277 1295 560">3</i></div><p class="cap">C-14 상황 · 관측값 · 확인 항목</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-15_판단실습_순서이유.png" data-crop="320 190 1330 930" data-w="820"><i data-b="890 277 1295 560">4</i><i data-b="890 702 1295 806">5</i><i data-b="890 841 1295 889">6</i></div><p class="cap">C-15 순서 배열 + 이유 입력</p></div>
   </div>
   <ul class="notes" style="margin-top:0;display:grid;grid-template-columns:1fr 1fr;gap:0 40px">
-    <li><span class="n">1</span><div><b>상황 · 2 관측값 · 3 확인 항목(위/아래 버튼)</b>: 제출 전에는 권장 순서와 근거를 보여주지 않습니다<span class="api">POST /api/attempts → 판단 실습은 status aligned 에서 시작</span></div></li>
-    <li><span class="n">4</span><div><b>바꾼 순서 · 5 이유 · 6 제출</b>: 위/아래로만 옮겨 누락·중복이 없습니다(서버 422 로 한 번 더 확인)<span class="api">POST /api/attempts/{id}/submission {orderedIds, reason}</span><span class="go">→ S-09 연습 결과</span></div></li>
+    <li><span class="n">1</span><div><b>상황 · 2 관측값 · 3 확인 항목(위/아래 버튼)</b> — 제출 전에는 권장 순서와 근거를 보여주지 않습니다<span class="api">POST /api/attempts → 판단 실습은 status aligned 에서 시작</span></div></li>
+    <li><span class="n">4</span><div><b>바꾼 순서 · 5 이유 · 6 제출</b> — 위/아래로만 옮겨 누락·중복이 없습니다(서버 422 로 한 번 더 확인)<span class="api">POST /api/attempts/{id}/submission {orderedIds, reason}</span><span class="go">→ S-09 연습 결과</span></div></li>
   </ul>
   <div class="foot"><span class="legend"><span class="r">■ 구성 요소</span><span class="b">■ API</span><span class="g">■ 이동</span></span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 공통 · S-09 연습 결과(정렬)</p>
-  <h2 class="h2">결과와 보정 과정을 함께 보여줍니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 공통</p>
+  <h2 class="h2">S-09 연습 결과(정렬) — 결과뿐 아니라 과정을 보여줍니다</h2>
   <div class="ui" style="grid-template-columns:auto 1fr;gap:46px">
     <div class="shot" data-src="../자료/캡처/C-16_결과_정렬.png" data-crop="320 190 1330 970" data-h="770"><i data-b="340 198 1316 262">1</i><i data-b="361 357 879 536">2</i><i data-b="361 700 879 940">3</i><i data-b="937 380 1295 632">4</i><i data-b="937 788 1295 952">5</i></div>
     <ul class="notes">
-      <li><span class="n">1</span><div><b>한 줄 요약</b>: 통과 여부 + 가장 약한 기준</div></li>
+      <li><span class="n">1</span><div><b>한 줄 요약</b> — 통과 여부 + 가장 약한 기준</div></li>
       <li><span class="n">2</span><div><b>정렬 결과</b> 최종 위치·회전 오차 · 소요 시간 · 보정 · 과잉 보정 · 허용 범위<span class="api">GET /api/attempts/{attempt_id} → summary.finalDx/Dy/DTheta · adjustmentCount · overshootCount</span></div></li>
-      <li><span class="n">3</span><div><b>보정 궤적</b>: 지나온 경로와 시간별 오차 그래프<span class="api">Attempt.samples[] (includeSamples=true)</span></div></li>
+      <li><span class="n">3</span><div><b>보정 궤적</b> — 지나온 경로와 시간별 오차 그래프<span class="api">Attempt.samples[] (includeSamples=true)</span></div></li>
       <li><span class="n">4</span><div><b>기준별 확인 결과</b> 루브릭 4기준 점수·이유 + 채점 출처 <span class="tag warn">규칙 기반 임시 채점 · AI 미연결</span><span class="api">Attempt.rubricScores · rubricReasons · rubricSource</span></div></li>
-      <li><span class="n">5</span><div><b>과잉 보정 구간</b>: 서버가 규칙으로 계산한 구간<span class="api">Attempt.events[]</span></div></li>
+      <li><span class="n">5</span><div><b>과잉 보정 구간</b> — 서버가 규칙으로 계산한 구간<span class="api">Attempt.events[]</span></div></li>
     </ul>
   </div>
   <div class="foot"><span class="legend"><span class="r">■ 구성 요소</span><span class="b">■ API</span><span class="g">■ 이동</span></span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 공통 · S-09 연습 결과(판단) · AI 피드백</p>
-  <h2 class="h2">순서 비교와 피드백을 근거와 함께 보여줍니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 신입사원 · 공통</p>
+  <h2 class="h2">S-09 연습 결과(판단) · AI 피드백 — 근거와 함께 돌려받습니다</h2>
   <div class="ui" style="grid-template-columns:auto auto 1fr;gap:30px">
     <div><div class="shot" data-src="../자료/캡처/C-17_결과_판단.png" data-crop="340 290 900 720" data-h="470"><i data-b="361 360 879 592">1</i><i data-b="361 617 879 704">2</i></div><p class="cap">C-17 순서 비교표 + 지표</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-25_결과_AI피드백성공.png" data-crop="340 1180 900 1740" data-h="470"><i data-b="361 1250 879 1728">3</i></div><p class="cap">C-25 AI 피드백 성공 (실제 LLM 호출)</p></div>
     <ul class="notes">
-      <li><span class="n">1</span><div><b>내 순서 vs 권장 순서</b>: 제출 후에만 권장 순서 · 근거 · "과정 기준이며 모든 현장의 정답이 아님" 고지<span class="api">Course.scenario.recommendedOrder · rationale · orderNote</span></div></li>
+      <li><span class="n">1</span><div><b>내 순서 vs 권장 순서</b> — 제출 후에만 권장 순서 · 근거 · "과정 기준이며 모든 현장의 정답이 아님" 고지<span class="api">Course.scenario.recommendedOrder · rationale · orderNote</span></div></li>
       <li><span class="n">2</span><div><b>첫 항목 순위 · 순서 차이 합 · 상위 3개 일치</b><span class="api">Attempt.summary.scoringMetrics.firstPickRank · orderDistance · top3Overlap</span></div></li>
       <li><span class="n">3</span><div><b>학습 피드백</b> 잘한 부분 · 보완할 부분 · 다음 연습 · 판단할 수 없는 것, <span class="tag">AI 생성</span> · 채점 출처 <span class="tag">AI 채점</span><span class="api">POST /api/attempts/{id}/feedback → rubricSource: llm</span><span class="api">POST /api/attempts/{id}/feedback/viewed (학습자 본인 첫 열람)</span></div></li>
     </ul>
   </div>
-  <div class="foot"><span>LLM 입력은 센서 원본이 아니라 계산된 분석 결과 + 답변 + 루브릭이며, 서버가 근거 구간 id와 점수 범위를 검증합니다</span><span class="pn"></span></div>
+  <div class="foot"><span>LLM 입력은 센서 원본이 아니라 계산된 분석 결과 + 답변 + 루브릭이며, 서버가 근거 구간 id 와 점수 범위를 검증합니다</span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">04 UI 흐름도 · 매니저 · S-10 → S-11 → S-12</p>
-  <h2 class="h2">반 전체 현황에서 학습자 개인 기록까지 확인합니다</h2>
+  <p class="eyebrow">04 UI 흐름도 · 매니저</p>
+  <h2 class="h2">S-10 → S-11 → S-12 — 반 전체에서 한 사람의 실제 기록까지</h2>
   <div class="ui" style="grid-template-columns:auto auto 1fr;gap:30px">
     <div><div class="shot" data-src="../자료/캡처/C-20_교육현황.png" data-crop="320 90 1330 850" data-w="600"><i data-b="340 198 1316 301">1</i><i data-b="340 318 882 838">2</i><i data-b="900 614 1316 838">3</i></div><p class="cap">C-20 교육 현황 (매니저 로그인)</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-21_학습자목록.png" data-crop="320 90 1330 660" data-w="560"><i data-b="341 222 1315 274">4</i></div><p class="cap">C-21 학습자 목록</p>
       <div class="shot" style="margin-top:14px" data-src="../자료/캡처/C-22_학습자별성취도.png" data-crop="320 90 1330 700" data-w="560"><i data-b="340 318 820 686">5</i></div><p class="cap">C-22 학습자별 성취도</p></div>
     <ul class="notes">
       <li><span class="n">1</span><div><b>요약 지표</b> 배정 인원 · 이수 · 미착수 · 검토 필요<span class="api">GET /api/instructor/overview · /api/courses/{course_id}</span></div></li>
-      <li><span class="n">2</span><div><b>학습자별 진도</b>: 서버에 저장된 단계 완료 기록으로만 계산</div></li>
-      <li><span class="n">3</span><div><b>검토 필요</b>: 최신 시도의 AI 피드백 실패 등 (<code>InstructorRow.needsReview</code>)</div></li>
+      <li><span class="n">2</span><div><b>학습자별 진도</b> — 서버에 저장된 단계 완료 기록으로만 계산</div></li>
+      <li><span class="n">3</span><div><b>검토 필요</b> — 최신 시도의 AI 피드백 실패 등 (<code>InstructorRow.needsReview</code>)</div></li>
       <li><span class="n">4</span><div><b>학습자 행</b> 소속 · 단계 · 시도 · 최근 제출 · 상태<span class="go">→ S-12 학습자별 성취도</span></div></li>
       <li><span class="n">5</span><div><b>기준별 달성도 · 시도별 추이 · 제출 기록</b><span class="api">GET /api/users/{user_id} · /api/attempts?userId · /api/enrollments?userId</span><span class="go">→ 제출 기록 선택 → S-09</span></div></li>
     </ul>
@@ -465,7 +465,7 @@
 
 <section class="slide pad">
   <p class="eyebrow">04 UI 흐름도 · 예외 · 오류 시나리오</p>
-  <h2 class="h2">오류가 나도 실습을 계속할 수 있고, 기록은 보존됩니다</h2>
+  <h2 class="h2">오류가 나도 실습이 막히지 않고, 기록은 사라지지 않습니다</h2>
   <div class="ui" style="grid-template-columns:auto auto 1fr;gap:30px">
     <div><div class="shot" data-src="../자료/캡처/C-12_모형컨트롤러_연결안됨.png" data-crop="925 640 1315 1590" data-h="640"><i data-b="941 670 1289 748">1</i><i data-b="941 1025 1289 1072">2</i><i data-b="941 1530 1190 1572">3</i></div><p class="cap">C-12 모형 컨트롤러 미연결</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-19_결과_피드백실패.png" data-crop="340 1150 900 1440" data-w="420"><i data-b="361 1251 879 1410">4</i></div><p class="cap">C-19 AI 피드백 실패</p>
@@ -488,10 +488,10 @@
 
 <section class="slide pad">
   <p class="eyebrow">05 데이터 모델 설계</p>
-  <h2 class="h2">화면과 API가 쓰는 데이터를 19개 테이블로 설계했습니다</h2>
+  <h2 class="h2">화면과 API 가 쓰는 모든 데이터를 19개 테이블로 드러냈습니다</h2>
   <div class="grid" style="grid-template-columns:1fr 520px;margin-top:40px;gap:40px">
     <div class="card" style="height:720px;display:flex;align-items:center;justify-content:center;border:2px dashed var(--line);background:#fff">
-      <div style="text-align:center;color:var(--muted)"><p style="font-size:30px;font-weight:700;margin:0">ERD 이미지 자리</p><p style="font-size:22px">dbdiagram.io에서 <code>9반_P286_김진수_WME-DB.dbml</code> 을 렌더링한 캡처로 교체<br>(0 errors 확인 완료 · 그룹 4개가 보이게 배치)</p></div>
+      <div style="text-align:center;color:var(--muted)"><p style="font-size:30px;font-weight:700;margin:0">ERD 이미지 자리</p><p style="font-size:22px">dbdiagram.io 에서 <code>9반_P286_김진수_WME-DB.dbml</code> 을 렌더링한 캡처로 교체<br>(0 errors 확인 완료 · 그룹 4개가 보이게 배치)</p></div>
     </div>
     <div>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
@@ -502,14 +502,14 @@
       </div>
       <p style="margin-top:30px;font-size:24px;font-weight:800">설계 포인트</p>
       <ul class="notes" style="margin-top:6px">
-        <li><span class="n" style="background:var(--blue)">1</span><div><b>UI의 모든 필드를 컬럼으로</b>: 단계 · 루브릭 · 판단 순서 · 피드백 문장을 테이블로 정규화</div></li>
-        <li><span class="n" style="background:var(--blue)">2</span><div><b>M:N 명시</b>: 배정↔단계 · 시도↔루브릭 · 시도↔확인 항목 · 피드백↔근거 구간</div></li>
-        <li><span class="n" style="background:var(--blue)">3</span><div><b>상태값은 enum 14종</b>: 시도 상태 · 채점 출처 · 입력 장치 등</div></li>
-        <li><span class="n" style="background:var(--blue)">4</span><div><b>재현용 버전 저장</b>: 시도마다 과정 · 판정 · 설정 버전</div></li>
+        <li><span class="n" style="background:var(--blue)">1</span><div><b>UI 의 모든 필드를 컬럼으로</b> — 단계 · 루브릭 · 판단 순서 · 피드백 문장을 테이블로 정규화</div></li>
+        <li><span class="n" style="background:var(--blue)">2</span><div><b>M:N 명시</b> — 배정↔단계 · 시도↔루브릭 · 시도↔확인 항목 · 피드백↔근거 구간</div></li>
+        <li><span class="n" style="background:var(--blue)">3</span><div><b>상태값은 enum 14종</b> — 시도 상태 · 채점 출처 · 입력 장치 등</div></li>
+        <li><span class="n" style="background:var(--blue)">4</span><div><b>재현용 버전 저장</b> — 시도마다 과정 · 판정 · 설정 버전</div></li>
       </ul>
     </div>
   </div>
-  <div class="foot"><span>제출 파일: 9반_P286_김진수_WME-DB.dbml · 시연 앱은 같은 데이터를 6개 테이블 + JSON 컬럼으로 저장하고, API는 논리 설계와 같은 구조로 응답합니다</span><span class="pn"></span></div>
+  <div class="foot"><span>제출 파일: 9반_P286_김진수_WME-DB.dbml · 시연 앱은 같은 데이터를 6개 테이블 + JSON 컬럼으로 저장하고, API 는 논리 설계와 같은 구조로 응답합니다</span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
@@ -530,15 +530,15 @@
       <p><b>measurements</b> 시계열(초당 약 25회) <span class="tag gray">1:N</span><br><b>events</b> 보정·과잉 보정 구간 <span class="tag gray">1:N</span></p></div>
     <div class="card"><span class="tag">AI 피드백 · 2</span>
       <p><b>feedback_items</b><br>kind: good · improve · cannot_judge <span class="tag gray">1:N</span></p>
-      <p><b>feedback_evidence</b><br>근거 구간: 그 시도에 실재하는 구간만 저장(서버 검증)<br><span class="tag gray">attempts ↔ events M:N</span></p>
-      <p>attempts의 feedback_status · generator · llm_model · input_fingerprint · viewed_at과 함께 피드백 한 건을 이룹니다</p></div>
+      <p><b>feedback_evidence</b><br>근거 구간 — 그 시도에 실재하는 구간만 저장(서버 검증)<br><span class="tag gray">attempts ↔ events M:N</span></p>
+      <p>attempts 의 feedback_status · generator · llm_model · input_fingerprint · viewed_at 과 함께 피드백 한 건을 이룹니다</p></div>
   </div>
-  <div class="foot"><span>PK/FK · UNIQUE · not null · default · enum은 DBML에 모두 명시</span><span class="pn"></span></div>
+  <div class="foot"><span>PK/FK · UNIQUE · not null · default · enum 은 DBML 에 모두 명시</span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad" style="padding-top:60px">
   <p class="eyebrow">05 데이터 모델 설계 · 화면 ↔ API ↔ DB</p>
-  <h2 class="h2" style="font-size:46px">화면 데이터와 API 필드 · ERD 컬럼 대응표</h2>
+  <h2 class="h2" style="font-size:46px">화면에 보이는 데이터는 API 필드와 ERD 컬럼에 그대로 있습니다</h2>
   <table class="t small" style="margin-top:18px;font-size:18px">
     <tr><th style="width:120px">화면</th><th style="width:300px">화면에 보이는 데이터</th><th style="width:560px">API 필드</th><th>ERD (논리 설계)</th></tr>
     <tr><td>공통</td><td>이름 · 소속 · 역할</td><td>User.displayName · department · role</td><td>users.display_name · department · role</td></tr>
@@ -555,25 +555,25 @@
     <tr><td>S-09</td><td>AI 피드백 문장 · 근거 구간</td><td>Feedback.good[] · improve[] · cannotJudge[] · eventIds[]</td><td>feedback_items(kind) · feedback_evidence(M:N)</td></tr>
     <tr><td>S-09</td><td>피드백 상태 · 열람</td><td>Attempt.feedbackStatus · feedbackViewedAt · FeedbackViewedResponse</td><td>attempts.feedback_status · feedback_viewed_at</td></tr>
   </table>
-  <div class="card" style="margin-top:12px;padding:14px 24px"><p style="margin:0;font-size:19px"><b>검증</b>: 화면이 부르는 API 경로 = YAML 경로 = 서버 라우트 일치 · 실제 서버 응답 23건을 YAML 스키마로 자동 검증해 실패 0건</p></div>
+  <div class="card" style="margin-top:12px;padding:14px 24px"><p style="margin:0;font-size:19px"><b>검증</b> — 화면이 부르는 API 경로 = YAML 경로 = 서버 라우트 일치 · 실제 서버 응답 23건을 YAML 스키마로 자동 검증해 실패 0건</p></div>
   <div class="foot"><span>전체 대조표: 화면설계.md 4절 (30행)</span><span class="pn"></span></div>
 </section>
 
 <section class="slide pad">
-  <p class="eyebrow">06 API 명세 정의 · OpenAPI 3.0.3</p>
-  <h2 class="h2">REST 16개(로그인 [설계] 포함), WebSocket 1개</h2>
+  <p class="eyebrow">06 API 명세 정의</p>
+  <h2 class="h2">OpenAPI 3.0.3 — REST 16개와 실시간 기록 WebSocket 1개</h2>
   <div class="grid" style="grid-template-columns:auto 1fr;margin-top:34px;gap:50px">
     <div class="shot" data-src="../자료/도구캡처/Swagger_API목록.png" data-crop="0 0 1440 1480" data-h="750"></div>
     <div>
       <ul class="notes">
-        <li><span class="n" style="background:var(--blue)">1</span><div><b>화면별로 필요한 API 전체</b>: 태그 8개(auth · users · courses · enrollments · attempts · feedback · instructor · system)</div></li>
-        <li><span class="n" style="background:var(--blue)">2</span><div><b>메서드</b>: 조회 GET · 생성·동작 POST · 부분 수정 PATCH(진도)</div></li>
-        <li><span class="n" style="background:var(--blue)">3</span><div><b>공통 스키마 재사용</b>: <code>$ref</code> 스키마 34개 · 공통 파라미터 5개 · 공통 오류 응답 5개</div></li>
-        <li><span class="n" style="background:var(--blue)">4</span><div><b>오류 코드</b>: 401 [설계] · 404 · 409 · 422 · 503. 서버가 실제로 내는 코드만 적었습니다</div></li>
-        <li><span class="n" style="background:var(--blue)">5</span><div><b>WebSocket · Web Serial</b>: OpenAPI로 표현하지 않는 실시간 기록과 센서 경로는 description에 메시지 구조와 함께 설명</div></li>
-        <li><span class="n" style="background:var(--blue)">6</span><div><b>AI 실패 대비</b>: 503 본문 <code>answerPreserved: true</code>, 답변과 규칙 점수 보존</div></li>
+        <li><span class="n" style="background:var(--blue)">1</span><div><b>화면별로 필요한 API 전체</b> — 태그 8개(auth · users · courses · enrollments · attempts · feedback · instructor · system)</div></li>
+        <li><span class="n" style="background:var(--blue)">2</span><div><b>메서드</b> — 조회 GET · 생성·동작 POST · 부분 수정 PATCH(진도)</div></li>
+        <li><span class="n" style="background:var(--blue)">3</span><div><b>공통 스키마 재사용</b> — <code>$ref</code> 스키마 34개 · 공통 파라미터 5개 · 공통 오류 응답 5개</div></li>
+        <li><span class="n" style="background:var(--blue)">4</span><div><b>오류 코드</b> — 401 [설계] · 404 · 409 · 422 · 503. 서버가 실제로 내는 코드만 적었습니다</div></li>
+        <li><span class="n" style="background:var(--blue)">5</span><div><b>WebSocket · Web Serial</b> — OpenAPI 로 표현하지 않는 실시간 기록과 센서 경로는 description 에 메시지 구조와 함께 설명</div></li>
+        <li><span class="n" style="background:var(--blue)">6</span><div><b>AI 실패 대비</b> — 503 본문 <code>answerPreserved: true</code>, 답변과 규칙 점수 보존</div></li>
       </ul>
-      <div class="card" style="margin-top:20px;padding:20px 28px"><p style="margin:0;font-size:20px">Swagger 파서 오류 0 · Security Schemes는 과제 기준에 따라 제외 · 로그인은 <b>[설계]</b>(<code>x-implementation: design</code>)</p></div>
+      <div class="card" style="margin-top:20px;padding:20px 28px"><p style="margin:0;font-size:20px">Swagger 파서 오류 0 · Security Schemes 는 과제 기준에 따라 제외 · 로그인은 <b>[설계]</b>(<code>x-implementation: design</code>)</p></div>
     </div>
   </div>
   <div class="foot"><span>제출 파일: 9반_P286_김진수_WME-API.yml</span><span class="pn"></span></div>
@@ -610,11 +610,11 @@
   <h2 class="h2">설계하면서 고민한 것과 다음 단계</h2>
   <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-top:42px;gap:22px">
     <div class="card"><span class="num">01</span><h4 style="margin-top:8px">판정은 서버가 합니다</h4><p>허용 범위 통과 · 경로 분석 · 채점은 화면이 보낸 값을 믿지 않고 과정 설정값으로 계산합니다.</p></div>
-    <div class="card"><span class="num">02</span><h4 style="margin-top:8px">AI가 실패해도 교육은 계속됩니다</h4><p>답변 저장 → 규칙 채점 → AI 피드백 순서라, LLM이 없어도 기록과 성취도가 채워집니다.</p></div>
-    <div class="card"><span class="num">03</span><h4 style="margin-top:8px">센서는 서버를 거치지 않습니다</h4><p>조작은 즉시 반응해야 해서 브라우저가 USB로 직접 읽고(Web Serial), 결과 좌표만 WebSocket으로 기록합니다.</p></div>
+    <div class="card"><span class="num">02</span><h4 style="margin-top:8px">AI 가 실패해도 교육은 계속됩니다</h4><p>답변 저장 → 규칙 채점 → AI 피드백 순서라, LLM 이 없어도 기록과 성취도가 채워집니다.</p></div>
+    <div class="card"><span class="num">03</span><h4 style="margin-top:8px">센서는 서버를 거치지 않습니다</h4><p>조작은 즉시 반응해야 해서 브라우저가 USB 로 직접 읽고(Web Serial), 결과 좌표만 WebSocket 으로 기록합니다.</p></div>
     <div class="card"><span class="num">04</span><h4 style="margin-top:8px">업종 중립 구조</h4><p>과정 내용 · 허용 오차 · 조작 계수 · 채점 규칙이 과정 데이터에 있어, 다른 업종은 데이터만 바꿉니다.</p></div>
-    <div class="card"><span class="num">05</span><h4 style="margin-top:8px">논리 설계와 시연 앱 저장</h4><p>ERD는 정규화한 논리 설계이고, 3일 일정의 시연 앱은 JSON 컬럼에 저장합니다. API는 두 방식에서 같은 구조입니다.</p></div>
-    <div class="card"><span class="num">06</span><h4 style="margin-top:8px">설정값과 한계를 명시합니다</h4><p>허용 오차는 교육 과정 설정값이며 실제 장비 정밀도가 아닙니다. 센서 모드는 위치를 잴 수 없어 가운데 고정이고, 회전 허용은 ±3°(키보드 ±1°)입니다.</p></div>
+    <div class="card"><span class="num">05</span><h4 style="margin-top:8px">논리 설계와 시연 앱 저장</h4><p>ERD 는 정규화한 논리 설계이고, 3일 일정의 시연 앱은 JSON 컬럼에 저장합니다. API 는 두 방식에서 같은 구조입니다.</p></div>
+    <div class="card"><span class="num">06</span><h4 style="margin-top:8px">설정값과 한계를 숨기지 않습니다</h4><p>허용 오차는 교육 과정 설정값이며 실제 장비 정밀도가 아닙니다. 센서 모드는 위치를 잴 수 없어 가운데 고정입니다.</p></div>
   </div>
   <div class="card" style="margin-top:26px;background:var(--blue-soft)"><h4 style="color:var(--blue)">다음 단계</h4>
     <p>① 과정 작성·배정 화면(교육 담당자 액터) ② 로그인 API 구현 · 세션/토큰 인증과 역할별 접근 제어 ③ 여러 모형 운영 시 센서 보정값을 과정 설정으로 이동 ④ LLM 피드백 품질 검증 · 배포</p></div>
@@ -626,7 +626,7 @@
 <section class="slide center" style="background:var(--ink)">
   <p style="font-size:30px;color:#8B95A1;font-weight:700;letter-spacing:.1em">APPENDIX</p>
   <h1 style="margin-top:24px;font-size:110px;font-weight:800;color:#fff">발표 자료</h1>
-  <p style="margin-top:30px;font-size:32px;color:#B0B8C1">5분 발표용 요약입니다. 내용은 본문과 같습니다</p>
+  <p style="margin-top:30px;font-size:32px;color:#B0B8C1">5분 발표용 요약 · 본문과 같은 내용입니다</p>
 </section>
 
 <section class="slide center">
@@ -673,7 +673,7 @@
   <h2 class="h1" style="margin-top:22px;font-size:68px">장비 앞의 실수와 교육 기간은<br>모두 비용입니다</h2>
   <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-top:70px;gap:30px">
     <div class="card" style="padding:44px"><p style="margin:0;font-size:26px">반도체 공장 30분 정전</p><div class="big" style="font-size:88px;margin-top:18px;color:var(--red)">약 500<small>억 원</small></div><p>2018년 평택 사례</p></div>
-    <div class="card" style="padding:44px"><p style="margin:0;font-size:26px">첨단 공정 웨이퍼 1장</p><div class="big" style="font-size:88px;margin-top:18px">약 2<small>만 달러</small></div><p>300mm · 3nm 로직 공정 추정치</p></div>
+    <div class="card" style="padding:44px"><p style="margin:0;font-size:26px">첨단 공정 웨이퍼 1장</p><div class="big" style="font-size:88px;margin-top:18px">약 2<small>만 달러</small></div><p>300mm · 3nm 추정치</p></div>
     <div class="card" style="padding:44px"><p style="margin:0;font-size:26px">신입 1명 교육·훈련</p><div class="big" style="font-size:88px;margin-top:18px">18.3<small>개월</small></div><p>1인당 약 5,960만 원 (2013 조사)</p></div>
   </div>
   <div class="foot"><span class="src">출처: 서울경제 2026.05.13 · Silicon Analysts Wafer Pricing(2026.08) · 한국경영자총협회 2013 신입사원 교육·훈련 현황조사(매일노동뉴스 2013.11.22)</span><span class="pn"></span></div>
@@ -687,29 +687,29 @@
     <div class="card" style="padding:44px"><span class="num" style="font-size:28px">02</span><h4 style="margin-top:14px;font-size:34px">반복할 수 없습니다</h4><p style="font-size:26px">신입은 틀려 보고 다시 해 볼 기회가 부족합니다.</p></div>
     <div class="card" style="padding:44px"><span class="num" style="font-size:28px">03</span><h4 style="margin-top:14px;font-size:34px">과정이 보이지 않습니다</h4><p style="font-size:26px">매니저는 결과만 보고, 어디서 막히는지는 모릅니다.</p></div>
   </div>
-  <p style="margin-top:60px;font-size:34px;font-weight:800">그래서 실장비 투입 전에 반복해서 연습할 환경이 필요합니다.</p>
+  <p style="margin-top:60px;font-size:34px;font-weight:800">→ 필요한 것은 실장비 전에, 틀려도 괜찮은 연습장입니다.</p>
   <p class="page-no pn"></p>
 </section>
 
 <section class="slide pad" style="padding-top:110px">
   <p class="eyebrow" style="font-size:26px">SOLUTION</p>
-  <h2 class="h1" style="margin-top:22px;font-size:68px">WME는 실장비 투입 전 연습 환경입니다</h2>
+  <h2 class="h1" style="margin-top:22px;font-size:68px">WME 는 투입 전 연습장입니다</h2>
   <p class="lead" style="margin-top:20px;font-size:30px">실장비 실습을 대체하지 않습니다. 그 앞 단계를 반복하게 합니다.</p>
   <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:56px;gap:30px">
-    <div class="card" style="padding:44px"><span class="tag" style="font-size:22px">신입사원</span><h4 style="margin-top:18px;font-size:36px">반복해서 연습하고 결과를 확인합니다</h4><p style="font-size:26px">정렬 실습(3D 장비 뷰 · 키보드 또는 교육용 모형 컨트롤러)과 판단 실습. 매 시도가 새 기록으로 쌓이고, 기준별 확인과 AI 피드백을 받습니다.</p></div>
-    <div class="card" style="padding:44px"><span class="tag" style="font-size:22px">매니저</span><h4 style="margin-top:18px;font-size:36px">학습 과정을 기록으로 확인합니다</h4><p style="font-size:26px">반 전체 진도와 기준별 달성도에서 시작해, 한 사람의 보정 경로 · 답변 · 피드백까지 들어가 봅니다.</p></div>
+    <div class="card" style="padding:44px"><span class="tag" style="font-size:22px">신입사원</span><h4 style="margin-top:18px;font-size:36px">연습하고, 틀리고, 다시 합니다</h4><p style="font-size:26px">정렬 실습(3D 장비 뷰 · 키보드 또는 교육용 모형 컨트롤러)과 판단 실습. 매 시도가 새 기록으로 쌓이고, 기준별 확인과 AI 피드백을 받습니다.</p></div>
+    <div class="card" style="padding:44px"><span class="tag" style="font-size:22px">매니저</span><h4 style="margin-top:18px;font-size:36px">과정을 기록으로 봅니다</h4><p style="font-size:26px">반 전체 진도와 기준별 달성도에서 시작해, 한 사람의 보정 경로 · 답변 · 피드백까지 들어가 봅니다.</p></div>
   </div>
   <p class="page-no pn"></p>
 </section>
 
 <section class="slide pad" style="padding-top:90px">
   <p class="eyebrow" style="font-size:26px">FLOW</p>
-  <h2 class="h1" style="margin-top:18px;font-size:60px">대기방 → 실습 → 결과 → 매니저 확인</h2>
+  <h2 class="h1" style="margin-top:18px;font-size:60px">대기방 → 실습 → 결과 → 매니저</h2>
   <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-top:50px;gap:26px">
-    <div><div class="shot" data-src="../자료/캡처/C-07_대기방.png" data-crop="320 90 1330 700" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">① 대기방: 확인 기준 안내</p></div>
-    <div><div class="shot" data-src="../자료/캡처/C-08_정렬실습_조작중.png" data-crop="320 90 1330 700" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">② 정렬 실습: 서버가 판정</p></div>
-    <div><div class="shot" data-src="../자료/캡처/C-16_결과_정렬.png" data-crop="320 190 1330 800" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">③ 결과: 보정 과정 표시</p></div>
-    <div><div class="shot" data-src="../자료/캡처/C-20_교육현황.png" data-crop="320 90 1330 700" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">④ 매니저: 학습자별 진도 확인</p></div>
+    <div><div class="shot" data-src="../자료/캡처/C-07_대기방.png" data-crop="320 90 1330 700" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">① 대기방 — 기준을 먼저 봅니다</p></div>
+    <div><div class="shot" data-src="../자료/캡처/C-08_정렬실습_조작중.png" data-crop="320 90 1330 700" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">② 정렬 실습 — 판정은 서버</p></div>
+    <div><div class="shot" data-src="../자료/캡처/C-16_결과_정렬.png" data-crop="320 190 1330 800" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">③ 결과 — 과정까지 보여줍니다</p></div>
+    <div><div class="shot" data-src="../자료/캡처/C-20_교육현황.png" data-crop="320 90 1330 700" data-w="400"></div><p class="cap" style="font-size:22px;color:var(--ink);font-weight:700">④ 매니저 — 누가 어디서 막히는지</p></div>
   </div>
   <p style="margin-top:50px;font-size:28px;color:var(--body)">화면 13개 · 모든 화면 데이터는 API 필드와 ERD 컬럼에 대응합니다.</p>
   <p class="page-no pn"></p>
@@ -720,7 +720,7 @@
   <h2 class="h1" style="margin-top:22px;font-size:68px">교육용 모형 컨트롤러로<br>직접 정렬해 보겠습니다</h2>
   <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-top:70px;gap:30px">
     <div class="card" style="padding:40px"><span class="num" style="font-size:28px">01</span><h4 style="margin-top:14px;font-size:32px">모형을 수평으로</h4><p style="font-size:24px">기울기가 ±4° 안에 들어오면 수평으로 판정합니다.</p></div>
-    <div class="card" style="padding:40px"><span class="num" style="font-size:28px">02</span><h4 style="margin-top:14px;font-size:32px">비틀어서 회전을 맞춤</h4><p style="font-size:24px">영점을 잡은 평행 자세가 0°입니다. 비튼 만큼 웨이퍼가 돌고, 회전 허용은 ±3°입니다.</p></div>
+    <div class="card" style="padding:40px"><span class="num" style="font-size:28px">02</span><h4 style="margin-top:14px;font-size:32px">비틀어서 회전을 맞춤</h4><p style="font-size:24px">비튼 각도만큼 화면의 웨이퍼가 돕니다. 위치는 가운데 고정입니다.</p></div>
     <div class="card" style="padding:40px"><span class="num" style="font-size:28px">03</span><h4 style="margin-top:14px;font-size:32px">5초 유지 → 확정 → 결과</h4><p style="font-size:24px">실습 성공 표시 후 확정하면 서버가 분석하고 결과로 넘어갑니다.</p></div>
   </div>
   <p style="margin-top:50px;font-size:24px;color:var(--muted)">센서는 선택 입력입니다. 없으면 키보드로 같은 실습을 합니다.</p>
@@ -729,21 +729,21 @@
 
 <section class="slide pad" style="padding-top:90px">
   <p class="eyebrow" style="font-size:26px">AI FEEDBACK</p>
-  <h2 class="h1" style="margin-top:18px;font-size:60px">AI 피드백은 근거를 함께 제시하고,<br>실패해도 기록은 보존됩니다</h2>
+  <h2 class="h1" style="margin-top:18px;font-size:60px">AI 는 근거와 함께 피드백하고,<br>실패해도 기록은 남습니다</h2>
   <div class="grid" style="grid-template-columns:auto 1fr;margin-top:44px;gap:50px">
     <div><div class="shot" data-src="../자료/캡처/C-25_결과_AI피드백성공.png" data-crop="340 1180 900 1740" data-h="560"></div><p class="cap" style="font-size:22px">성공 — 실제 LLM 호출 결과, AI 채점 · AI 생성 표시</p></div>
     <div><div class="shot" data-src="../자료/캡처/C-19_결과_피드백실패.png" data-crop="340 1150 900 1440" data-w="760"></div><p class="cap" style="font-size:22px">실패 — 답변과 연습 기록은 그대로, 다시 시도</p>
-      <div class="card" style="margin-top:26px"><p style="margin:0;font-size:24px">LLM에는 센서 원본이 아니라 <b>분석 결과 + 답변 + 루브릭</b>만 보냅니다. 서버가 응답의 근거 구간과 점수 범위를 검증합니다.</p></div></div>
+      <div class="card" style="margin-top:26px"><p style="margin:0;font-size:24px">LLM 에는 센서 원본이 아니라 <b>분석 결과 + 답변 + 루브릭</b>만 보냅니다. 서버가 응답의 근거 구간과 점수 범위를 검증합니다.</p></div></div>
   </div>
   <p class="page-no pn"></p>
 </section>
 
 <section class="slide pad" style="padding-top:110px">
   <p class="eyebrow" style="font-size:26px">DESIGN</p>
-  <h2 class="h1" style="margin-top:22px;font-size:68px">화면 · API · 데이터를<br>서로 맞춰 설계했습니다</h2>
+  <h2 class="h1" style="margin-top:22px;font-size:68px">화면 · API · 데이터가<br>같은 이야기를 합니다</h2>
   <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-top:70px;gap:26px">
     <div class="card" style="padding:40px;text-align:center"><div class="big" style="font-size:96px;color:var(--blue)">13</div><p style="font-size:26px">화면</p></div>
-    <div class="card" style="padding:40px;text-align:center"><div class="big" style="font-size:96px;color:var(--blue)">16</div><p style="font-size:26px">REST API (설계 1 포함) + WebSocket 1</p></div>
+    <div class="card" style="padding:40px;text-align:center"><div class="big" style="font-size:96px;color:var(--blue)">16</div><p style="font-size:26px">REST API + WebSocket 1</p></div>
     <div class="card" style="padding:40px;text-align:center"><div class="big" style="font-size:96px;color:var(--blue)">19</div><p style="font-size:26px">테이블 · M:N 4</p></div>
     <div class="card" style="padding:40px;text-align:center"><div class="big" style="font-size:96px;color:var(--blue)">0</div><p style="font-size:26px">응답 ↔ 명세 불일치<br>(실제 응답 23건 검증)</p></div>
   </div>
@@ -755,7 +755,7 @@
   <h2 class="h1" style="margin-top:22px;font-size:68px">고민한 점과 다음 단계</h2>
   <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:60px;gap:30px">
     <div class="card" style="padding:44px"><h4 style="font-size:34px">고민한 점</h4>
-      <p style="font-size:26px;line-height:1.9">· 판정과 채점은 서버가 합니다<br>· AI가 실패해도 교육은 멈추지 않습니다<br>· 허용 오차는 교육 설정값, 모형은 교육용입니다</p></div>
+      <p style="font-size:26px;line-height:1.9">· 판정과 채점은 서버가 합니다<br>· AI 가 실패해도 교육은 멈추지 않습니다<br>· 허용 오차는 교육 설정값, 모형은 교육용입니다</p></div>
     <div class="card" style="padding:44px;background:var(--blue-soft)"><h4 style="font-size:34px;color:var(--blue)">다음 단계</h4>
       <p style="font-size:26px;line-height:1.9">· 과정 작성·배정 화면<br>· 로그인 · 역할별 접근 제어 구현<br>· LLM 피드백 품질 검증과 배포</p></div>
   </div>

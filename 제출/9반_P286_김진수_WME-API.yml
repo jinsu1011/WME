@@ -13,7 +13,7 @@ info:
     - 시각은 ISO8601 문자열.
 
     **실시간 측정 (WebSocket, OpenAPI 로 표현하지 않음)** — `ws://localhost:8000/ws/attempts/{attemptId}`
-    - 서버 → 화면 `ready` : `{type, attemptId, source, inputDevice, tolerance{positionPx, rotationDeg}}`
+    - 서버 → 화면 `ready` : `{type, attemptId, source, inputDevice, tolerance{positionPx, rotationDeg}}` — 모형 컨트롤러 시도는 rotationDeg 3.0(키보드는 과정 설정 1.0)
     - 화면 → 서버 `sample` : `{type, tMs, roll, pitch, waferX, waferY, waferTheta, quality}` — 초당 약 25회. 구조는 `components/schemas/Sample` 참고
     - 서버 → 화면 `state` : `{type, tMs, dx, dy, dtheta, withinTolerance}` — 허용 범위 판정은 서버가 과정 설정값으로 한다
     - 화면 → 서버 `confirm` → 서버 → 화면 `aligned` : `{type, attempt}` (POST /attempts/{attemptId}/phase 의 confirmed 와 같은 일). 보낸 뒤 서버가 연결을 닫는다

@@ -24,6 +24,7 @@ import { scoreBand } from '@/charts/theme'
 import { positionError, toMicrometer } from '@/lib/alignment'
 import { attemptScorePct, relativeDay } from '@/lib/stats'
 import { ORDER_LABEL } from '@/lib/scoring'
+import { SENSOR_ROTATION_TOLERANCE_DEG } from '@/data/controllerSettings'
 
 const LEVEL_LABEL = ['미충족', '부분 충족', '충족']
 
@@ -203,7 +204,7 @@ function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => vo
                     label="최종 회전 오차"
                     value={Math.abs(summary.finalDTheta).toFixed(1)}
                     unit="°"
-                    sub={`허용 ±${settings.toleranceDeg}°`}
+                    sub={`허용 ±${attempt.inputDevice === 'model_controller' ? SENSOR_ROTATION_TOLERANCE_DEG : settings.toleranceDeg}°`}
                   />
                   <Metric
                     label="소요 시간"

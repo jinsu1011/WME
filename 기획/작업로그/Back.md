@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-09-15 14:27 — 확인: BACK 이 아닌 세션이 서버 코드 수정·재기동 (BACK 은 아무것도 고치지 않음)
+
+12차 뒤 "서버 켜짐·깨끗한 시드" 기록이 더는 사실이 아니어서 남긴다. 전부 실제 조회로 확인.
+- **서버**: BACK 이 켠 uvicorn(pid 702)이 14:26:14 종료되고, **다른 Claude 세션**(부모 프로세스 93151, 08:45 시작 — BACK 세션 95196 아님)이 같은 시각 8000 에 재기동(pid 13576). `llmConfigured: true`
+- **미커밋 서버 코드 변경(BACK 이 쓰지 않음)**: `config.py` `SENSOR_ROTATION_TOLERANCE_DEG = 3.0` 추가, `main.py` 에서 `input_device == model_controller` 이면 확정 분석(`_finalize`)과 WebSocket `ready.tolerance.rotationDeg`·`withinTolerance` 의 회전 허용 오차를 3.0° 로 바꿈 (주석: 9/15 실물 확인, 사용자 결정)
+  - API/문서 영향: 센서 시도의 WS `ready.tolerance.rotationDeg` = 3.0, `converged`·채점(`rotationOutsideComfort/Range`)이 3.0° 기준. YAML `AlignmentSettings`("허용 오차는 과정 설정값")·DBML `alignment_settings` 에 센서 전용 값이 없다 → HEADER 대조 필요
+  - 시드 14건은 전부 keyboard 라 시드 점수에는 영향 없음(분석 코드상)
+- **DB**: 12차 재적재 뒤 시드 외 시도 3건 생김 — `e-u-1-stage-a4`(aligning, 14:13), `e-u-1-stage-a5`·`a6`(feedback_ready, **rubricSource llm** = 실제 LLM 호출 2회, 14:14·14:18). 시도 17건
+- BACK 의 문구 3줄·README 는 `c0c229e` 로 이미 커밋됨
+- BACK 은 서버 재시작·재적재·코드 수정을 하지 않았다. 재적재는 그 세션 작업이 끝났는지 확인한 뒤 지시받아 한다
+
+---
+
 ## 2026-09-15 — BE 12차: course_judgment.py prerequisites 문장화 (HEADER 결정) · BACK 작업 끝
 
 - 107행 판단 과정 `prerequisites` `["photo-basics"]` → `["포토공정 입문 과정의 정렬 개념"]`. 다른 값 무수정(`git diff --stat` 1줄)

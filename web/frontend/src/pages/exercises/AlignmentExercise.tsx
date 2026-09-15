@@ -32,6 +32,7 @@ import {
   LEVEL_EXIT_MARGIN_DEG,
   LEVEL_TOLERANCE_DEG,
   SENSOR_AXIS_SIGN,
+  SENSOR_ROTATION_TOLERANCE_DEG,
   SENSOR_SMOOTHING_SEC,
   SUCCESS_HOLD_MS,
   SUCCESS_TEXT,
@@ -102,8 +103,8 @@ export function AlignmentExercise({ course }: { course: Course }) {
   const [keyTilt, setKeyTilt] = useState({ roll: 0, pitch: 0 })
   /**
    * 센서 모드 회전 — 모형을 비튼 각도를 그대로 따른다.
-   * θ = 시작 오차 + (지금 비틀기 − 기준 비틀기) + 미세조정.
-   * 기준은 정렬을 시작할 때(또는 영점을 바꿀 때) 그 순간의 비틀기로 다시 잡아 θ 가 튀지 않게 한다.
+   * θ = (영점 기준 비틀기) + 미세조정. **영점을 잡은 자세(마스크와 평행) = 회전 0°** 다.
+   * 2026-09-15 수정: 예전에는 정렬 시작 순간을 기준으로 시작 오차를 더해, 모형을 평행하게 둬도 화면은 어긋나 보였다.
    */
   const yawBaseRef = useRef<number | null>(null)
   const thetaTrimRef = useRef(0)
@@ -145,6 +146,11 @@ export function AlignmentExercise({ course }: { course: Course }) {
   }))
 
   const sensorMode = inputDevice === 'model_controller'
+  /** 판정에 쓰는 설정. 센서 모드만 회전 허용 오차를 넓힌다(서버 config 와 같은 값). */
+  const judge = useMemo(
+    () => (sensorMode ? { ...settings, toleranceDeg: SENSOR_ROTATION_TOLERANCE_DEG } : settings),
+    [settings, sensorMode],
+  )
   // 수평(평행) 허용 범위. ⚠️ 서버 과정 설정에 아직 없어 상수를 쓴다(data/controllerSettings.ts).
   const levelTolerance = LEVEL_TOLERANCE_DEG
   const keyboardLevel =
@@ -153,8 +159,8 @@ export function AlignmentExercise({ course }: { course: Course }) {
   const levelNow = sensorMode ? sensorInside : keyboardLevel
   const ready = sensorMode ? tiltState.available : keyboard.available
 
-  const within = isWithinTolerance(error.dx, error.dy, error.dTheta, settings)
-  const thetaOk = Math.abs(error.dTheta) <= settings.toleranceDeg
+  const within = isWithinTolerance(error.dx, error.dy, error.dTheta, judge)
+  const thetaOk = Math.abs(error.dTheta) <= judge.toleranceDeg
 
   // 매 프레임 바뀌는 자세를 화면에는 초당 10회만 반영한다(읽기에 충분하다).
   useEffect(() => {
@@ -347,8 +353,9 @@ export function AlignmentExercise({ course }: { course: Course }) {
       posRef.current.x = 0
       posRef.current.y = 0
     }
-    // 비틀기 기준은 첫 센서 값에서 다시 잡는다(지금 θ 를 이어받는다).
+    // 센서 모드 미세조정은 시작할 때마다 0 으로. θ 는 영점 기준 비틀기에서 바로 나온다.
     yawBaseRef.current = null
+    if (sensorMode) thetaTrimRef.current = 0
 
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - prev) / 1000)
@@ -363,11 +370,8 @@ export function AlignmentExercise({ course }: { course: Course }) {
         thetaTrimRef.current += k.vTheta * dt // Q/E 는 미세조정으로 쓴다
         const a = tilt.attitude()
         if (a.hasData) {
-          if (yawBaseRef.current === null) {
-            yawBaseRef.current = a.yaw
-            thetaTrimRef.current = p.theta - settings.startOffset.theta
-          }
-          p.theta = settings.startOffset.theta + (a.yaw - yawBaseRef.current) + thetaTrimRef.current
+          // 영점(평행) 자세가 0°. 모형을 마스크와 평행하게 두면 회전 오차도 0 에 가깝다.
+          p.theta = a.yaw + thetaTrimRef.current
         }
         p.x = 0
         p.y = 0
@@ -396,7 +400,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
       p.theta = Math.max(-45, Math.min(45, p.theta))
 
       // 정렬 유지 — 수평 + 허용 오차 안 상태가 끊김 없이 이어진 시간을 센다.
-      const alignedNow = levelOk && isWithinTolerance(p.x, p.y, p.theta, settings)
+      const alignedNow = levelOk && isWithinTolerance(p.x, p.y, p.theta, judge)
       const s = successRef.current
       if (!s.done) {
         if (alignedNow) {
@@ -455,7 +459,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
     levelTolerance,
     settings.fieldRadius,
     settings.tolerancePx,
-    settings.toleranceDeg,
+    judge.toleranceDeg,
     settings.startOffset.theta,
   ])
 
@@ -498,7 +502,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
       if (API_MODE === 'mock') {
         const samples = samplesRef.current
         const last = samples.at(-1)!
-        const events = detectOvershoots(samples, settings)
+        const events = detectOvershoots(samples, judge)
         const created = await createAttempt({
           userId: userId,
           courseId: course.id,
@@ -517,7 +521,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
             durationMs: last.tMs,
             adjustmentCount: countAdjustments(samples),
             overshootCount: events.length,
-            converged: isWithinTolerance(last.dx, last.dy, last.dTheta, settings),
+            converged: isWithinTolerance(last.dx, last.dy, last.dTheta, judge),
           },
         })
         await submitAnswer(created.id, { orderOptionId, reason: reason.trim() })
@@ -573,7 +577,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
                     dx={error.dx}
                     dy={error.dy}
                     dTheta={error.dTheta}
-                    settings={settings}
+                    settings={judge}
                     within={within}
                     trail={phase === 'ready' ? undefined : trail}
                   />
@@ -736,13 +740,13 @@ export function AlignmentExercise({ course }: { course: Course }) {
                 dx={error.dx}
                 dy={error.dy}
                 dTheta={error.dTheta}
-                settings={settings}
+                settings={judge}
                 within={within}
                 trail={phase === 'ready' ? undefined : trail}
               />
             </div>
             <div className="mt-3 border-t border-slate-100 pt-3">
-              <AlignmentLegend settings={settings} within={within} />
+              <AlignmentLegend settings={judge} within={within} />
             </div>
           </Card>
 
@@ -752,7 +756,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
               dx={error.dx}
               dy={error.dy}
               dTheta={error.dTheta}
-              settings={settings}
+              settings={judge}
               within={within}
               positionFixed={sensorMode}
             />

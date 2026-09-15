@@ -23,6 +23,13 @@
 - ERD PNG 내보내기는 dbdiagram 로그인 필요 → 사용자에게 맡김
 - **LLM 실제 호출 성공**(BACK, gpt-4.1-mini) → 성공 응답의 추가 필드 YAML `Feedback` 에 반영(rubricScores·llmModel·modelVersion·courseVersion·inputFingerprint·reused, `[llm 일 때만]`), DBML `attempts.feedback_llm_model`·`feedback_input_fingerprint` 추가(146컬럼). modelVersion 은 config `MODEL_VERSION` 과 같은 값 확인. 검사 오류 0
 - BACK 완료 보고 결정: ① Feedback 추가 필드 → YAML·DBML 반영 완료 ② 판단 과정 prerequisites `photo-basics` id → BACK 에 문장으로 수정 지시(대기방 정렬 과정과 같은 처리, 캡처 영향 없음) ③ `C-19b_결과_AI피드백_참고.png` → **유지**, 개요 PDF 에 "AI 피드백 성공" 근거로 사용 후보(M4 수정 후 지표 1번째·0·3/3 정상, `AI 채점`·`AI 생성` 배지, 키·개인정보 없음 확인) ④ phase API 에 재확정 시 재분석 설명 추가(inputDevice 기본값은 앞서 POST /attempts 설명에 추가됨). YAML 검사 오류 0
+- **센서 실물 재확인 (9/15 오후, 회사 맥북)**: 사용자 요청으로 `brew install arduino-cli`(1.5.1) + `arduino:avr@1.8.8` 설치 → `hardware/firmware/wme_sensor` 컴파일(저장 25%·메모리 21%) → UNO `/dev/cu.usbmodem101` 업로드 성공 → 7초 수신 `INFO,KEEP_STILL_CALIBRATING` → `INFO,READY` → WME 118줄 50.0Hz 오류 0. 이어서 **사용자가 웹(5174, 크롬)에서 센서 실습 정상 동작 확인**. 포트를 잡고 있던 개인 프로젝트 `driving_game` 은 사용자가 종료. 빌드 산출물은 저장소 밖(세션 임시 폴더)
+- **결정 19 센서 회전 ±3° · 평행 기준** (사용자 요청, HEADER 가 직접 수정 — 사용자 지시로 FRONT·BACK 세션 없이 진행):
+  원인 — 센서 모드 θ = 시작 오차(6.5°) + (현재 yaw − 정렬 시작 순간 yaw). 영점(평행) 자세와 무관하게 시작 순간이 기준이라 평행하게 둬도 어긋나 보였고, 크게 비틀면 ±45° 제한에 걸려 "회전 오차 45.0°" 로 표시됨.
+  수정 — 프론트 `AlignmentExercise.tsx`: θ = 영점 기준 yaw + 미세조정(평행 = 0°), 센서 모드 판정·표시에 `SENSOR_ROTATION_TOLERANCE_DEG`(3.0, `controllerSettings.ts`) 적용 / `Result.tsx` 허용 표시 입력 장치별 / 백엔드 `config.SENSOR_ROTATION_TOLERANCE_DEG`, `main.py` WS 판정·확정 분석에서 `input_device == model_controller` 면 rotation_deg 3.0. 키보드는 ±1° 그대로(시드·캡처 불변).
+  확인 — tsc 통과, oxlint 기존 경고 1, py_compile OK, 분석기에 2.5° 끝값: 1° 기준 converged False / 3° True. 서버 8000 키 넣고 재기동(llmConfigured true). **실물 센서로 다시 확인 필요(사용자)**
+- 개요 PDF 재검토 반영: 제목의 "A — B" 13곳을 라벨로 옮기고 제목은 한 문장, 과장 표현 교체(드러냈습니다·막히지 않고·같은 이야기·틀려도 괜찮은 연습장 등), 본문 "— " 50곳 → ":", 영문 뒤 띄어 쓴 조사 붙임, REST 16개에 "로그인 [설계] 포함", 웨이퍼 가격 "3nm 로직 공정 추정치", 센서 ±3° 반영. 40쪽 유지
+- 개요 PDF 초안 40쪽 → 사용자 요청으로 AI 말투·표현 재검토 시작 (이전 버전 `제출/이전버전/개요PDF_slides_ver(2)_9.15.13.50.html`, `개요PDF_초안_ver(1)_9.15.13.50.pdf`)
 - BACK 끝 보고 GET 대조: prerequisites 두 과정 문장, align 단계 새 문장, 시도 14·실패 0, llmConfigured true, 서버 변경 3파일 4줄 — 보고와 일치
 - FRONT 끝 보고: 캡처 25개. C-07(새 단계 문장·사전 지식 문장), C-17(1번째·0·3/3, `권장 순서와 가까움`), C-19(지표 정상 + `생성 실패` 카드·답변 보존·다시 시도) 직접 열어 확인. C-19 옆 연습 목록 4건은 재적재 전 촬영이라 C-17(2건)과 다름 — 허용
 - 개요 PDF 초안 시작: `제출/개요PDF/slides.html` (1920×1080 HTML 슬라이드 → PDF 인쇄 방식). 사용자 이전 발표자료 스타일 참고. 1쪽 표지·2쪽 STORY 01 레이아웃, 스토리 도입(입사 → 경험 없음 → 실수 → 비용 → 연습 필요) 수치 출처 조사

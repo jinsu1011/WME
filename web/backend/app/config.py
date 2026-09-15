@@ -16,6 +16,11 @@ COURSE_VERSION = "course-2.0.0"   # 프론트 courses.ts 와 같은 문자열을
 MODEL_VERSION = "rule-align-1.0.0"      # 규칙 기반 정렬 경로 분석 버전(학습 모델 아님)
 SETTINGS_VERSION = "align-settings-1.0.0"
 
+# 교육용 모형 컨트롤러(센서 모드) 회전 허용 오차(도). 키보드는 과정 설정(±1.0°)을 그대로 쓴다.
+# 센서 비틀기는 손떨림·자이로 드리프트가 있어 ±1° 로는 유지가 어렵다(2026-09-15 실물 확인, 사용자 결정).
+# 프론트 data/controllerSettings.ts 의 SENSOR_ROTATION_TOLERANCE_DEG 와 같은 값이어야 한다.
+SENSOR_ROTATION_TOLERANCE_DEG = 3.0
+
 # --- LLM ---------------------------------------------------------------
 # 키는 환경변수에만 둔다. 없으면 LLM 호출을 하지 않고 feedback_status='failed' 로 남긴다.
 # .strip() 하는 이유: 키를 붙여넣을 때 줄바꿈이나 공백이 따라 들어오면

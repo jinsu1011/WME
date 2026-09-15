@@ -133,7 +133,7 @@ Table enrollments {
 Table enrollment_steps {
   enrollment_id varchar   [not null, ref: > enrollments.id]
   step_id       integer   [not null, ref: > course_steps.id]
-  completed_at  timestamp [not null]
+  completed_at  timestamp [null, note: '[설계] 단계별 완료 시각 — 시연 앱은 저장하지 않음']
 
   indexes {
     (enrollment_id, step_id) [pk]
@@ -299,7 +299,7 @@ Table attempts {
   phase_markers       text            [not null, note: '단계 전환 기록 (JSON). API: phaseMarkers']
 
   // 답변
-  order_option_id     integer         [null, ref: > order_options.id, note: '정렬 실습 조정 순서']
+  order_option_id     integer         [null, ref: > order_options.id, note: '정렬 실습 조정 순서. API 는 order_options.option_key 문자열(orderOptionId)로 주고받는다']
   reason              text            [null, note: '학습자가 쓴 이유 (1~2000자). 데이터로만 다룬다']
   submitted_at        timestamp       [null]
 
@@ -310,6 +310,8 @@ Table attempts {
   feedback_generator  feedback_generator [null]
   feedback_next_step  text            [null, note: '다음 연습']
   feedback_created_at timestamp       [null]
+  feedback_llm_model  varchar         [null, note: 'LLM 생성일 때 모델 이름. API: Feedback.llmModel']
+  feedback_input_fingerprint varchar  [null, note: '모델 입력 해시 — 같은 입력이면 재호출하지 않음. API: Feedback.inputFingerprint (modelVersion·courseVersion 은 이 행의 버전 컬럼과 같은 값)']
   feedback_viewed_at  timestamp       [null]
 
   // 재현용 버전
@@ -382,7 +384,7 @@ Table events {
   start_ms   integer    [not null]
   end_ms     integer    [not null, note: 'end_ms > start_ms']
   type       event_type [not null]
-  axis       varchar    [null, note: '주로 움직인 축 (x, y, xy, theta)']
+  axis       varchar    [null, note: '주로 움직인 축 (xy, theta)']
   metrics    text       [not null, note: '구간 지표 (JSON): errorBefore, errorAfter, movedX, overshootAmount 등']
 
   indexes {

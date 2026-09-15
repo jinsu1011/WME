@@ -16,7 +16,7 @@ info:
     - 서버 → 화면 `ready` : `{type, attemptId, source, inputDevice, tolerance{positionPx, rotationDeg}}`
     - 화면 → 서버 `sample` : `{type, tMs, roll, pitch, waferX, waferY, waferTheta, quality}` — 초당 약 25회. 구조는 `components/schemas/Sample` 참고
     - 서버 → 화면 `state` : `{type, tMs, dx, dy, dtheta, withinTolerance}` — 허용 범위 판정은 서버가 과정 설정값으로 한다
-    - 화면 → 서버 `confirm` → 서버 → 화면 `measured` : `{type, attempt}` (POST /attempts/{attemptId}/phase 의 confirmed 와 같은 일)
+    - 화면 → 서버 `confirm` → 서버 → 화면 `aligned` : `{type, attempt}` (POST /attempts/{attemptId}/phase 의 confirmed 와 같은 일). 보낸 뒤 서버가 연결을 닫는다
     - 오류 `error` : `{type, message}`
 
     **센서(교육용 모형 컨트롤러)** 는 서버를 거치지 않고 브라우저가 USB 로 직접 읽는다(Web Serial API). 그래서 센서 전용 API 는 없고, 조작 결과(웨이퍼 좌표)만 위 WebSocket 으로 기록된다. 센서가 없으면 키보드로 같은 실습이 된다.
@@ -207,6 +207,7 @@ paths:
         '연습 시작'을 누르면 가장 먼저 부른다. 받은 id 를 이후 모든 호출에 쓴다.
         attemptNo 는 서버가 부여하고, 배정이 없으면 서버가 만든다.
         정렬 실습은 status `aligning`, 판단 실습(측정 없음)은 `aligned` 에서 시작한다.
+        inputDevice 를 생략하면 `keyboard` 로 기록한다.
       operationId: postAttempt
       requestBody:
         required: true
@@ -281,6 +282,7 @@ paths:
         단계 전환을 기록한다. `confirmed` 가 측정 종료 시점이며, 이때 서버가 저장된 측정으로
         규칙 기반 정렬 경로 분석을 돌려 summary·events 를 만들고 status 를 `aligned` 로 바꾼다.
         통과 여부(converged)는 화면이 보낸 값이 아니라 서버가 계산한다.
+        이미 확정된 시도에 다시 `confirmed` 를 보내면 저장된 측정으로 분석을 다시 돌려 summary·events·endedAt 을 새로 쓴다.
       operationId: postAttemptPhase
       parameters:
         - $ref: '#/components/parameters/AttemptIdPath'
@@ -312,6 +314,7 @@ paths:
         정렬 실습은 조정 순서(orderOptionId)와 이유, 판단 실습은 확인 순서(orderedIds)와 이유를 제출한다.
         제출 시점에 서버가 규칙 기반으로 채점해 rubricScores 와 rubricSource `rule` 을 채운다(AI 채점 아님).
         reason 은 학습자가 쓴 데이터이며 명령으로 해석하지 않는다.
+        이미 제출한 시도에 다시 제출하면 답변을 바꾸고 점수를 다시 계산한다(피드백 실패 상태에서는 409).
       operationId: postAttemptSubmission
       parameters:
         - $ref: '#/components/parameters/AttemptIdPath'
@@ -381,11 +384,11 @@ paths:
         - $ref: '#/components/parameters/AttemptIdPath'
       responses:
         '200':
-          description: 갱신된 시도
+          description: 기록된 열람 시각
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Attempt'
+                $ref: '#/components/schemas/FeedbackViewedResponse'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -485,7 +488,8 @@ components:
       description: |
         지금 상태에서 할 수 없음
         - 준비 중 과정으로 시도 생성: `아직 실습할 수 없는 과정입니다.`
-        - 정렬 확정 전 제출 / 이미 확정된 시도 재확정: `'{status}' 상태에서는 ... 할 수 없습니다.`
+        - 정렬 확정 전 제출: `'{status}' 상태에서는 ... 할 수 없습니다.`
+        - 피드백 실패(`feedback_failed`) 상태에서 재제출
         - 제출 전 피드백 요청: `답변을 먼저 제출해야 피드백을 만들 수 있습니다.`
       content:
         application/json:
@@ -669,14 +673,17 @@ components:
           items:
             $ref: '#/components/schemas/RubricCriterion'
         alignment:
+          type: object
           nullable: true
           allOf:
             - $ref: '#/components/schemas/AlignmentSettings'
         control:
+          type: object
           nullable: true
           allOf:
             - $ref: '#/components/schemas/ControlSettings'
         scenario:
+          type: object
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Scenario'
@@ -977,15 +984,18 @@ components:
           items:
             $ref: '#/components/schemas/PhaseMarker'
         summary:
+          type: object
           nullable: true
           oneOf:
             - $ref: '#/components/schemas/AlignmentSummary'
             - $ref: '#/components/schemas/JudgmentSummary'
         answer:
+          type: object
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Answer'
         feedback:
+          type: object
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Feedback'
@@ -995,6 +1005,7 @@ components:
         feedbackError:
           type: string
           nullable: true
+          description: 실패 정보 JSON 문자열 `{message, detail, retryable}` (API 키·원본 예외는 담지 않음)
         feedbackViewedAt:
           type: string
           format: date-time
@@ -1050,6 +1061,7 @@ components:
     AlignmentSummary:
       type: object
       description: 정렬 실습 분석 결과 (서버 계산)
+      required: [finalDx, finalDy, finalDTheta, converged]
       properties:
         finalDx:
           type: number
@@ -1112,11 +1124,13 @@ components:
     JudgmentSummary:
       type: object
       description: 판단 실습 분석 결과 (제출 시 서버 계산)
+      required: [scoringMetrics]
       properties:
         durationMs:
           type: integer
         scoringMetrics:
           type: object
+          required: [firstPickRank, orderDistance, top3Overlap, passed]
           properties:
             firstPickRank:
               type: integer
@@ -1178,6 +1192,42 @@ components:
           items:
             type: string
         generatedAt:
+          type: string
+          format: date-time
+        rubricScores:
+          type: array
+          description: '[llm 일 때만] 모델이 매긴 기준별 점수. 저장되면 Attempt.rubricScores 와 같은 값'
+          items:
+            type: integer
+            minimum: 0
+            maximum: 2
+        llmModel:
+          type: string
+          description: '[llm 일 때만] 호출한 모델 이름'
+          example: gpt-4.1-mini
+        modelVersion:
+          type: string
+          description: '[llm 일 때만] 생성 당시 판정 기준 버전 (재현용)'
+          example: rule-align-1.0.0
+        courseVersion:
+          type: string
+          description: '[llm 일 때만] 생성 당시 과정 버전 (재현용)'
+          example: course-2.0.0
+        inputFingerprint:
+          type: string
+          description: '[llm 일 때만] 모델 입력의 해시 16자리. 같은 입력·같은 버전이면 다시 호출하지 않는다'
+          example: 3f9a1c0b7d2e4a61
+        reused:
+          type: boolean
+          description: '[llm 일 때만] 같은 입력이라 저장된 피드백을 다시 쓴 경우 true'
+    FeedbackViewedResponse:
+      type: object
+      required: [attemptId, feedbackViewedAt]
+      properties:
+        attemptId:
+          type: string
+          example: e-u-1-stage-a3
+        feedbackViewedAt:
           type: string
           format: date-time
     Event:
@@ -1247,6 +1297,7 @@ components:
         attemptCount:
           type: integer
         latestAttempt:
+          type: object
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Attempt'

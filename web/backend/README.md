@@ -9,7 +9,7 @@ FastAPI + SQLite. 과정은 **포토공정 입문 — 마스크·웨이퍼 정�
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python -m app.seed              # DB 생성 + 시드
-./.venv/bin/python -m uvicorn app.main:app --reload --port 8000
+./.venv/bin/python -m uvicorn app.main:app --port 8000
 ```
 
 DB 파일은 `data/local/wme.db` 에 만들어진다(깃에 올라가지 않는다).

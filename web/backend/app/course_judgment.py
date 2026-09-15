@@ -104,7 +104,7 @@ CONTENT = {
         "먼저 확인할 항목과 나중에 확인할 항목을 구분한다",
         "왜 그 순서로 확인하려는지 설명한다",
     ],
-    "prerequisites": ["photo-basics"],
+    "prerequisites": ["포토공정 입문 과정의 정렬 개념"],
     "steps": [
         {"id": "concept", "title": "상황 확인", "summary": "무슨 일이 있었는지와 관측값을 읽습니다."},
         {"id": "marks", "title": "관측 판독", "summary": "관측값이 어느 쪽을 가리키는지 살펴봅니다."},

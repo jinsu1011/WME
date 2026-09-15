@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>WME 개요</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --blue: #3182F6;
+    --blue-soft: #E8F3FF;
+    --ink: #191F28;
+    --body: #4E5968;
+    --muted: #8B95A1;
+    --line: #E5E8EB;
+    --card: #F7F8FA;
+    --red: #F04452;
+  }
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #fff; }
+  body {
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .slide {
+    width: 1920px; height: 1080px;
+    position: relative; overflow: hidden;
+    page-break-after: always; break-after: page;
+    background: #fff;
+  }
+  .eyebrow { color: var(--blue); font-weight: 600; font-size: 26px; letter-spacing: .04em; }
+  .h1 { font-weight: 800; font-size: 76px; line-height: 1.28; letter-spacing: -0.02em; }
+  .lead { color: var(--body); font-size: 34px; line-height: 1.6; font-weight: 500; }
+  .page-no { position: absolute; right: 64px; bottom: 44px; color: var(--muted); font-size: 22px; }
+
+  /* ── 1. 표지 ── */
+  .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .cover .meta { color: var(--muted); font-size: 28px; font-weight: 500; }
+  .cover .title { margin-top: 36px; font-size: 168px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .cover .title .dot { color: var(--blue); }
+  .cover .full { margin-top: 18px; font-size: 34px; color: var(--muted); font-weight: 600; letter-spacing: .08em; }
+  .cover .sub { margin-top: 44px; font-size: 44px; color: var(--body); font-weight: 600; }
+  .cover .bar { margin: 64px auto 0; width: 120px; height: 6px; border-radius: 3px; background: var(--line); }
+  .cover .who { margin-top: 44px; color: var(--muted); font-size: 28px; }
+
+  /* ── 2. 배경 01 ── */
+  .story { padding: 150px 140px 0; display: grid; grid-template-columns: 1fr 760px; gap: 80px; }
+  .story .text { padding-top: 40px; }
+  .story .h1 { margin-top: 28px; }
+  .story .lead { margin-top: 56px; }
+
+  .scene { position: relative; height: 780px; }
+  .badge-card {
+    position: absolute; left: 90px; top: 40px; width: 440px; height: 620px;
+    background: #fff; border-radius: 36px;
+    box-shadow: 0 30px 80px rgba(25,31,40,.12), 0 2px 0 var(--line) inset;
+    transform: rotate(-4deg); overflow: hidden;
+  }
+  .badge-card .strap { position: absolute; left: 50%; top: -120px; width: 70px; height: 150px; margin-left: -35px; background: var(--blue); border-radius: 12px; opacity: .9; }
+  .badge-card .top { height: 150px; background: var(--ink); color: #fff; display: flex; align-items: flex-end; padding: 0 40px 28px; }
+  .badge-card .top .co { font-size: 34px; font-weight: 800; letter-spacing: -.01em; }
+  .badge-card .top .co small { display: block; font-size: 18px; font-weight: 500; color: #B0B8C1; margin-bottom: 6px; letter-spacing: .06em; }
+  .badge-card .face { margin: 48px auto 0; width: 190px; height: 190px; border-radius: 50%; background: var(--blue-soft);
+    display: flex; align-items: center; justify-content: center; font-size: 110px; }
+  .badge-card .name { margin-top: 34px; text-align: center; font-size: 46px; font-weight: 800; }
+  .badge-card .role { margin-top: 10px; text-align: center; font-size: 26px; color: var(--body); font-weight: 600; }
+  .badge-card .tag { margin: 30px auto 0; width: max-content; padding: 10px 22px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 22px; font-weight: 700; }
+
+  .badge-card .face .initial { font-size: 88px; font-weight: 800; color: var(--blue); }
+  .check { position: absolute; right: 0; bottom: 20px; width: 520px; background: #fff; border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(25,31,40,.10); padding: 14px 34px; }
+  .check .row { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; font-size: 28px; font-weight: 600; color: var(--body); }
+  .check .row + .row { border-top: 1px solid var(--line); }
+  .check .ok { color: var(--blue); } .check .no { color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- 1. 표지 -->
+<section class="slide cover" id="s1">
+  <p class="meta">9반 · P286 · AI 웹 서비스 설계 Mini-project</p>
+  <h1 class="title">WME<span class="dot">.</span></h1>
+  <p class="full">WE MAKE EXPERTS</p>
+  <p class="sub">실장비 앞에 서기 전에, 먼저 연습하는 신입 기술자 실습 플랫폼</p>
+  <div class="bar"></div>
+  <p class="who">김진수</p>
+</section>
+
+<!-- 2. 배경 01 -->
+<section class="slide" id="s2">
+  <div class="story">
+    <div class="text">
+      <p class="eyebrow">BACKGROUND 01</p>
+      <h2 class="h1">반도체 회사에<br>신입사원이 입사했습니다</h2>
+      <p class="lead">가상의 회사 SK 하이닉수 포토공정 1팀.<br>공정 이론은 충분히 공부했지만,<br>실제 장비 앞에 서 본 적은 없습니다.</p>
+    </div>
+    <div class="scene">
+      <div class="badge-card">
+        <div class="strap"></div>
+        <div class="top"><div class="co"><small>가상 회사</small>SK 하이닉수</div></div>
+        <div class="face"><span class="initial">김</span></div>
+        <div class="name">김진수</div>
+        <div class="role">포토공정 1팀 · 신입사원</div>
+      </div>
+      <div class="check">
+        <div class="row"><span>공정 이론 학습</span><b class="ok">완료</b></div>
+        <div class="row"><span>장비 조작 · 웨이퍼 취급 경험</span><b class="no">없음</b></div>
+      </div>
+    </div>
+  </div>
+  <p class="page-no">2</p>
+</section>
+
+<script>
+  // 미리보기: slides.html?s=2 로 한 장만 보기
+  const s = new URLSearchParams(location.search).get('s');
+  if (s) document.querySelectorAll('.slide').forEach(el => { if (el.id !== 's' + s) el.style.display = 'none'; });
+</script>
+</body>
+</html>

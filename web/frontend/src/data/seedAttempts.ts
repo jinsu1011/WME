@@ -193,11 +193,14 @@ const alignmentSeedAttempts: Attempt[] = learnerSeeds.flatMap((s) =>
  */
 const judgmentSummary: JudgmentSummary = {
   durationMs: 415_000,
-  firstPickRank: 2,
-  orderDistance: 4,
-  top3Overlap: 2,
-  answerLength: 71,
-  passed: true,
+  scoringMetrics: {
+    firstPickRank: 2,
+    orderDistance: 4,
+    top3Overlap: 2,
+    answerLength: 71,
+    durationMs: 415_000,
+    passed: true,
+  },
 }
 
 export const judgmentSeedAttempt: Attempt = {

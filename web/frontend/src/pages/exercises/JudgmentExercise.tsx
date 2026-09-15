@@ -6,6 +6,7 @@ import { Badge } from '@/components/Badge'
 import { Card, CardHeader, PageHeader } from '@/components/ui'
 import { initialOrder, isCompleteOrder, moveItem } from '@/lib/judgment'
 import { useDemo } from '@/lib/demo'
+import { completeSteps } from '@/lib/progress'
 
 /**
  * 상황 판단 실습(exerciseType: judgment).
@@ -62,6 +63,8 @@ export function JudgmentExercise({ course }: { course: Course }) {
         durationMs: Math.round(performance.now() - startedMsRef.current),
       })
       await submitAnswer(created.id, { orderedIds, reason: reason.trim() })
+      // 한 화면에서 읽기·판독·순서 정하기·제출을 모두 마친다.
+      await completeSteps(course, created.enrollmentId, ['concept', 'marks', 'align', 'submit'])
       navigate(`/attempts/${created.id}/result`)
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : '제출하지 못했습니다.')

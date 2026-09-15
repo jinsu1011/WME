@@ -45,7 +45,7 @@ export const courses: Course[] = [
       '위치와 회전을 순서대로 조정해 허용 오차 안에 맞춘다',
       '자신이 그 순서로 조정한 이유를 설명하고 결과를 기록한다',
     ],
-    prerequisites: ['photo-basics'],
+    prerequisites: ['장비 기초 과정의 정렬 개념'],
     steps: [
       {
         id: 'concept',
@@ -60,7 +60,8 @@ export const courses: Course[] = [
       {
         id: 'align',
         title: '정렬 실습',
-        summary: '컨트롤러로 위치(X·Y)를, 화면 조작으로 회전(θ)을 조정해 두 마크를 겹칩니다.',
+        summary:
+          '방향키로 위치(X·Y)를, Q/E 로 회전(θ)을 맞춰 두 마크를 겹칩니다. 모형 컨트롤러를 쓰면 위치는 가운데 고정, 비틀어서 회전합니다.',
       },
       {
         id: 'submit',
@@ -192,7 +193,7 @@ export const courses: Course[] = [
       '관련이 높은 항목을 앞쪽에 모은다',
       '왜 그 순서로 확인하려는지 설명한다',
     ],
-    prerequisites: [],
+    prerequisites: ['포토공정 입문 과정의 정렬 개념'],
     steps: [
       { id: 'concept', title: '상황 읽기', summary: '무슨 일이 있었는지와 관측값을 확인합니다.' },
       { id: 'marks', title: '관측값 판독', summary: '관측값이 어느 범위를 가리키는지 읽습니다.' },

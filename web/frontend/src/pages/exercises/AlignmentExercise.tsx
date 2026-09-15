@@ -8,6 +8,7 @@ import {
   submitAnswer,
 } from '@/api'
 import type { AlignmentChannel } from '@/api'
+import { completeSteps } from '@/lib/progress'
 import type { Course, InputDevice, Sample } from '@/types'
 import { Badge, InputDeviceBadge } from '@/components/Badge'
 import { Card, CardHeader, PageHeader } from '@/components/ui'
@@ -66,6 +67,8 @@ export function AlignmentExercise({ course }: { course: Course }) {
   const [inputDevice, setInputDevice] = useState<InputDevice>('keyboard')
   const [phase, setPhase] = useState<Phase>('ready')
   const [attemptId, setAttemptId] = useState<string | null>(null)
+  // 진도 기록용. server 모드는 시작할 때 받은 배정 id 를 확정·제출에서 다시 쓴다.
+  const enrollmentIdRef = useRef<string | null>(null)
   const [error, setError] = useState({
     dx: settings.startOffset.x,
     dy: settings.startOffset.y,
@@ -292,6 +295,9 @@ export function AlignmentExercise({ course }: { course: Course }) {
       setAttemptId(created.id)
       startedAtRef.current = created.startedAt
       setPhase('aligning')
+      enrollmentIdRef.current = created.enrollmentId
+      // 대기방에서 개념·마크 안내를 읽고 정렬을 시작했다.
+      void completeSteps(course, created.enrollmentId, ['concept', 'marks'])
     } catch (e: unknown) {
       setPhase('ready')
       setFormError(e instanceof Error ? e.message : '실습을 시작하지 못했습니다.')
@@ -466,6 +472,7 @@ export function AlignmentExercise({ course }: { course: Course }) {
     try {
       await markPhase(attemptId, 'confirmed', last.tMs)
       setPhase('confirmed')
+      if (enrollmentIdRef.current) void completeSteps(course, enrollmentIdRef.current, ['align'])
       // 확정한 정렬 상태 그대로 노광·현상을 보여 준다. 기록·채점과는 무관한 표시다.
       sendToStage(PLAY_EXPOSURE_EVENT, { dx: last.dx, dy: last.dy, dTheta: last.dTheta })
     } catch (e: unknown) {
@@ -514,11 +521,14 @@ export function AlignmentExercise({ course }: { course: Course }) {
           },
         })
         await submitAnswer(created.id, { orderOptionId, reason: reason.trim() })
+        // mock 모드는 제출 때 기록이 처음 만들어지므로 여기서 한 번에 남긴다.
+        await completeSteps(course, created.enrollmentId, ['concept', 'marks', 'align', 'submit'])
         navigate(`/attempts/${created.id}/result`)
         return
       }
 
       await submitAnswer(attemptId, { orderOptionId, reason: reason.trim() })
+      if (enrollmentIdRef.current) await completeSteps(course, enrollmentIdRef.current, ['submit'])
       navigate(`/attempts/${attemptId}/result`)
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : '제출하지 못했습니다.')

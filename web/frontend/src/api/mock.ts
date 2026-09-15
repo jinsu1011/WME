@@ -9,6 +9,7 @@ import type {
   Attempt,
   Course,
   Enrollment,
+  FeedbackViewedResponse,
   InstructorRow,
   LearnerStats,
   PhaseName,
@@ -296,6 +297,15 @@ async function requestFeedback(attemptId: string): Promise<Attempt | undefined> 
   return submitAnswer(attemptId, target.answer)
 }
 
+/** POST /api/attempts/{id}/feedback/viewed — 저장된 기록만 갱신한다. 시드 기록은 시각만 돌려준다. */
+async function markFeedbackViewed(attemptId: string): Promise<FeedbackViewedResponse | undefined> {
+  if (!allRecords().some((a) => a.id === attemptId)) return undefined
+  const feedbackViewedAt = new Date().toISOString()
+  saved = saved.map((a) => (a.id === attemptId ? { ...a, feedbackViewedAt } : a))
+  persist(saved)
+  return { attemptId, feedbackViewedAt }
+}
+
 /**
  * mock 채널 — 브라우저 안에서 직접 오차를 계산한다.
  * 화면은 WebSocket 인지 로컬 계산인지 구분하지 않는다.
@@ -352,6 +362,7 @@ export const mockApi: ApiClient = {
   markPhase,
   submitAnswer,
   requestFeedback,
+  markFeedbackViewed,
   openAlignmentChannel,
 }
 

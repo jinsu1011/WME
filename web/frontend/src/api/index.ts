@@ -35,6 +35,7 @@ export const updateProgress = impl.updateProgress
 export const createAttempt = impl.createAttempt
 export const markPhase = impl.markPhase
 export const submitAnswer = impl.submitAnswer
+export const markFeedbackViewed = impl.markFeedbackViewed
 export const requestFeedback = impl.requestFeedback
 export const openAlignmentChannel = impl.openAlignmentChannel
 

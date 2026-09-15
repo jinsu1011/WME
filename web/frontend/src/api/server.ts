@@ -10,6 +10,7 @@ import type {
   Attempt,
   Course,
   Enrollment,
+  FeedbackViewedResponse,
   InstructorRow,
   LearnerStats,
   PhaseName,
@@ -243,6 +244,12 @@ async function requestFeedback(attemptId: string): Promise<Attempt | undefined> 
   return normalizeAttempt(raw)
 }
 
+async function markFeedbackViewed(attemptId: string): Promise<FeedbackViewedResponse | undefined> {
+  return request<FeedbackViewedResponse>(`/api/attempts/${attemptId}/feedback/viewed`, {
+    method: 'POST',
+  })
+}
+
 /** WebSocket 채널. 프론트는 표본만 보내고 서버가 계산한 오차를 받는다. */
 function openAlignmentChannel(attemptId: string, handlers: ChannelHandlers): AlignmentChannel {
   const origin = BASE || window.location.origin
@@ -310,6 +317,7 @@ export const serverApi: ApiClient = {
   markPhase,
   submitAnswer,
   requestFeedback,
+  markFeedbackViewed,
   openAlignmentChannel,
 }
 

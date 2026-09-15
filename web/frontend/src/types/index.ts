@@ -259,8 +259,8 @@ export interface AlignmentSummary {
  * judgment 실습의 결과 요약 (설계서 7.5).
  * 채점기는 이 값들만 보므로 도메인 단어가 들어가지 않는다.
  */
-export interface JudgmentSummary {
-  durationMs: number
+/** 판단 실습 순서 지표. API `JudgmentSummary.scoringMetrics` 와 같은 모양이다. */
+export interface JudgmentScoringMetrics {
   /** 1순위로 놓은 항목이 권장 순서에서 몇 번째인가 (1부터) */
   firstPickRank: number
   /** 각 항목의 (학습자 위치 − 권장 위치) 절댓값 합. 0이면 완전 일치 */
@@ -268,8 +268,15 @@ export interface JudgmentSummary {
   /** 상위 3개가 권장 상위 3개와 겹치는 개수 (0~3) */
   top3Overlap: number
   answerLength: number
+  durationMs: number
   /** orderDistance <= 4 이면 참 */
   passed: boolean
+}
+
+/** 판단 실습 요약. 지표는 `scoringMetrics` 안에 있다(제출/WME-API.yml). */
+export interface JudgmentSummary {
+  durationMs: number
+  scoringMetrics: JudgmentScoringMetrics
 }
 
 /** 시도 요약. 실습 유형에 따라 담기는 값이 다르다. */
@@ -326,6 +333,12 @@ export interface Attempt {
   courseVersion: string
   modelVersion: string
   settingsVersion: string
+}
+
+/** POST /api/attempts/{id}/feedback/viewed 응답. 시도 전체가 아니라 두 값만 온다. */
+export interface FeedbackViewedResponse {
+  attemptId: string
+  feedbackViewedAt: string
 }
 
 /** 한 학습자의 집계 지표. 저장된 attempt/enrollment 에서만 계산한다. */

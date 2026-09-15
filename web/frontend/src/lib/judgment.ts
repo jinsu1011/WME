@@ -27,13 +27,17 @@ export function judgmentMetrics(
   const topRecommended = new Set(recommended.slice(0, 3))
   const top3Overlap = orderedIds.slice(0, 3).filter((id) => topRecommended.has(id)).length
 
+  // 서버 응답과 같은 모양 — 지표는 scoringMetrics 안에 둔다.
   return {
     durationMs,
-    firstPickRank,
-    orderDistance,
-    top3Overlap,
-    answerLength,
-    passed: orderDistance <= 4,
+    scoringMetrics: {
+      firstPickRank,
+      orderDistance,
+      top3Overlap,
+      answerLength,
+      durationMs,
+      passed: orderDistance <= 4,
+    },
   }
 }
 

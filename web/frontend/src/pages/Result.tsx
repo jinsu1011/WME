@@ -1,6 +1,15 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { fetchAttempt, fetchCourse, fetchUser, listAttempts, requestFeedback } from '@/api'
+import {
+  fetchAttempt,
+  fetchCourse,
+  fetchUser,
+  listAttempts,
+  markFeedbackViewed,
+  requestFeedback,
+} from '@/api'
+import { useDemo } from '@/lib/demo'
+import { completeSteps } from '@/lib/progress'
 import type { Attempt, Course, User } from '@/types'
 import { Badge, InputDeviceBadge } from '@/components/Badge'
 import { Loaded } from '@/components/LoadState'
@@ -73,7 +82,7 @@ function headlineFor(attempt: Attempt, course: Course): string {
   // 통과 판정은 유형마다 다른 값에서 읽는다.
   const passed = isAlignmentSummary(attempt.summary)
     ? attempt.summary.converged
-    : (attempt.summary?.passed ?? false)
+    : (attempt.summary?.scoringMetrics.passed ?? false)
   const judgment = course.exerciseType === 'judgment'
   const lead = judgment
     ? passed
@@ -102,6 +111,20 @@ function headlineFor(attempt: Attempt, course: Course): string {
 function ResultView({ data, onChanged }: { data: ResultData; onChanged: () => void }) {
   const { attempt, course, user, siblings } = data
   const settings = course.alignment
+  const { userId } = useDemo()
+  const viewedRef = useRef<string | null>(null)
+
+  // 피드백 열람 기록 — 학습자 본인이 처음 볼 때 한 번만. 매니저가 열어 본 것은 기록하지 않는다.
+  // 응답은 {attemptId, feedbackViewedAt} 뿐이라 시도를 다시 불러오거나 덮어쓰지 않는다(이 화면은 열람 시각을 표시하지 않는다).
+  useEffect(() => {
+    if (!attempt.feedback || attempt.feedbackViewedAt || attempt.userId !== userId) return
+    if (viewedRef.current === attempt.id) return
+    viewedRef.current = attempt.id
+    markFeedbackViewed(attempt.id).catch((e: unknown) =>
+      console.warn('[wme] 피드백 열람을 기록하지 못했습니다.', e),
+    )
+    void completeSteps(course, attempt.enrollmentId, ['feedback'])
+  }, [attempt, course, userId])
   // 아래 카드들은 정렬 실습의 지표를 쓴다. 다른 유형이면 null 이 되어 그리지 않는다.
   const summary = isAlignmentSummary(attempt.summary) ? attempt.summary : null
   const pct = attemptScorePct(attempt)
@@ -571,8 +594,8 @@ function JudgmentResult({
           subtitle="내가 정한 순서와 이 과정이 권장하는 순서입니다"
           aside={
             summary ? (
-              <Badge tone={summary.passed ? 'ok' : 'warn'}>
-                {summary.passed ? '권장 순서와 가까움' : '권장 순서와 차이 있음'}
+              <Badge tone={summary.scoringMetrics.passed ? 'ok' : 'warn'}>
+                {summary.scoringMetrics.passed ? '권장 순서와 가까움' : '권장 순서와 차이 있음'}
               </Badge>
             ) : undefined
           }
@@ -609,9 +632,9 @@ function JudgmentResult({
         </div>
         {summary && (
           <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
-            <Metric label="첫 항목 순위" value={summary.firstPickRank} unit="번째" sub="권장 순서 기준" />
-            <Metric label="순서 차이 합" value={summary.orderDistance} sub="0이면 완전 일치" />
-            <Metric label="상위 3개 일치" value={`${summary.top3Overlap}/3`} sub="권장 상위 항목과" />
+            <Metric label="첫 항목 순위" value={summary.scoringMetrics.firstPickRank} unit="번째" sub="권장 순서 기준" />
+            <Metric label="순서 차이 합" value={summary.scoringMetrics.orderDistance} sub="0이면 완전 일치" />
+            <Metric label="상위 3개 일치" value={`${summary.scoringMetrics.top3Overlap}/3`} sub="권장 상위 항목과" />
           </dl>
         )}
         <p className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-400">

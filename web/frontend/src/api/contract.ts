@@ -12,6 +12,7 @@ import type {
   Attempt,
   Course,
   Enrollment,
+  FeedbackViewedResponse,
   InputDevice,
   InstructorRow,
   LearnerStats,
@@ -79,6 +80,8 @@ export interface ApiClient {
   submitAnswer: (attemptId: string, answer: Omit<Answer, 'submittedAt'>) => Promise<Attempt | undefined>
   /** POST /api/attempts/{id}/feedback — 실패하면 FeedbackError 를 던진다 */
   requestFeedback: (attemptId: string) => Promise<Attempt | undefined>
+  /** POST /api/attempts/{id}/feedback/viewed — 요청 본문 없음, 응답은 {attemptId, feedbackViewedAt} */
+  markFeedbackViewed: (attemptId: string) => Promise<FeedbackViewedResponse | undefined>
 
   /**
    * 실습 중 표본을 보내는 통로.

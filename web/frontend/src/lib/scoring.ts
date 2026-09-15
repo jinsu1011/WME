@@ -186,40 +186,41 @@ export { ORDER_LABEL }
 export function scoreJudgment(course: Course, summary: JudgmentSummary, answer: Answer): ScoreResult {
   const levels: RubricLevel[] = [0, 0, 0, 0]
   const reasons: string[] = []
+  const m = summary.scoringMetrics
 
   // 0 관측 판독 — 1순위로 고른 항목이 권장 순서에서 몇 번째였나
-  if (summary.firstPickRank === 1) {
+  if (m.firstPickRank === 1) {
     levels[0] = 2
     reasons.push('관측값이 가리키는 항목을 첫 번째로 확인하려 했습니다.')
-  } else if (summary.firstPickRank === 2) {
+  } else if (m.firstPickRank === 2) {
     levels[0] = 1
     reasons.push('첫 번째로 고른 항목이 권장 순서에서 두 번째입니다.')
   } else {
     reasons.push(
-      `첫 번째로 고른 항목이 권장 순서에서 ${summary.firstPickRank}번째입니다. 관측값이 어느 범위를 가리키는지 다시 읽어 보세요.`,
+      `첫 번째로 고른 항목이 권장 순서에서 ${m.firstPickRank}번째입니다. 관측값이 어느 범위를 가리키는지 다시 읽어 보세요.`,
     )
   }
 
   // 1 확인 순서 — 권장 순서와의 거리
-  if (summary.orderDistance <= 2) {
+  if (m.orderDistance <= 2) {
     levels[1] = 2
     reasons.push('권장 순서와 거의 같은 순서로 배열했습니다.')
-  } else if (summary.orderDistance <= 5) {
+  } else if (m.orderDistance <= 5) {
     levels[1] = 1
-    reasons.push(`권장 순서와 자리 차이의 합이 ${summary.orderDistance}입니다.`)
+    reasons.push(`권장 순서와 자리 차이의 합이 ${m.orderDistance}입니다.`)
   } else {
-    reasons.push(`권장 순서와 자리 차이의 합이 ${summary.orderDistance}로 큽니다.`)
+    reasons.push(`권장 순서와 자리 차이의 합이 ${m.orderDistance}로 큽니다.`)
   }
 
   // 2 범위 좁히기 — 상위 3개가 얼마나 겹치나
-  if (summary.top3Overlap >= 3) {
+  if (m.top3Overlap >= 3) {
     levels[2] = 2
     reasons.push('상위 3개에 관련 높은 항목을 모두 모았습니다.')
-  } else if (summary.top3Overlap === 2) {
+  } else if (m.top3Overlap === 2) {
     levels[2] = 1
     reasons.push('상위 3개 중 2개가 권장 상위 항목과 겹칩니다.')
   } else {
-    reasons.push(`상위 3개 중 ${summary.top3Overlap}개만 권장 상위 항목과 겹칩니다.`)
+    reasons.push(`상위 3개 중 ${m.top3Overlap}개만 권장 상위 항목과 겹칩니다.`)
   }
 
   // 3 설명·기록 — 정렬 실습과 같은 기준
@@ -236,7 +237,7 @@ export function scoreJudgment(course: Course, summary: JudgmentSummary, answer: 
 
   const good: string[] = []
   const improve: string[] = []
-  if (summary.passed) good.push('권장 순서와 가까운 순서로 배열했습니다.')
+  if (m.passed) good.push('권장 순서와 가까운 순서로 배열했습니다.')
   else improve.push('권장 순서와 차이가 있습니다. 관측값이 가리키는 범위부터 다시 읽어 보세요.')
   if (levels[3] === 2) good.push('판단 이유를 기록으로 남겼습니다.')
   else improve.push('왜 그 순서로 확인하려는지 적으면 다음 연습과 비교할 수 있습니다.')
@@ -249,7 +250,7 @@ export function scoreJudgment(course: Course, summary: JudgmentSummary, answer: 
       good: good.length > 0 ? good : ['순서를 끝까지 정해 제출했습니다.'],
       improve,
       eventIds: [],
-      nextStep: summary.passed
+      nextStep: m.passed
         ? '같은 상황을 다시 보고 두 번째·세 번째 항목의 근거도 말로 설명해 보세요.'
         : '관측값 표를 다시 읽고 어느 범위를 가리키는지부터 정리해 보세요.',
       cannotJudge: [
